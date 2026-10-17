@@ -40,6 +40,22 @@ const ja: Translation<CoreText> = {
     minutesLater: (n: number) => `${n} 分後`,
   },
 
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude 作業中',
+    waitingShort: 'Claude の確認が必要',
+    verb: {
+      read: '読む', edit: '編集', bash: '実行', search: '検索', agent: 'サブエージェント呼び出し', web: 'ウェブ検索', other: 'タスク処理',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: '処理中', idle: '待機中', waiting: '確認待ち' },
+    alert: {
+      approval: (name: string) => `${name} の確認が必要です`,
+      done: (name: string) => `${name} が完了しました`,
+    },
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `ペットが ${figure} の「${preset}」に変わったときに適用`,

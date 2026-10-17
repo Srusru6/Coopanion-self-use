@@ -196,6 +196,15 @@ export interface PetDialogHandle {
  */
 export type ConfirmResult = 'yes' | 'always' | 'no' | 'dismissed' | 'timeout' | 'unavailable';
 
+/** A chip the pet keeps up beside itself, outside the conversation, set by another World; hidden while inactive. */
+export interface AmbientStatus {
+  active: boolean;
+  /** The short, always-shown label. */
+  text: string;
+  /** The full status, shown only after the person clicks the label. */
+  detail?: string;
+}
+
 export interface DesktopPetWorldOptions {
   cfg: DesktopPetConfigSection;
   timezone: string;
@@ -350,6 +359,8 @@ export class DesktopPetWorld implements World {
   private devices: Array<{ id: string; label: string }> = [];
   private readonly confirms = new Map<string, PendingConfirm>();
   private readonly dialogs = new Map<string, (a: PetDialogAnswer) => void>();
+  /** Another World's callback for when the person clicks a sticky alert card away. */
+  onAlertDismissed: ((id: number) => void) | null = null;
   /** The talk key is down (hold) or was switched on (toggle). */
   private talking = false;
   /** With `micOnPress`: the page keeps the microphone open from the talk key's press until MIC_RELEASE_MS after its release. */
@@ -1045,6 +1056,7 @@ export class DesktopPetWorld implements World {
         return;
       }
       case 'control': return this.onControl(String(msg.action));
+      case 'alert-dismissed': if (typeof msg.id === 'number') this.onAlertDismissed?.(msg.id); return;
       case 'dialog': {
         const settle = this.dialogs.get(String(msg.id));
         if (!settle) return;
@@ -1119,6 +1131,26 @@ export class DesktopPetWorld implements World {
   /** Dresses the body in `patch` over the skin as it is, and saves it, as a pick on the dressing page does. */
   dress(patch: Partial<PetSkin>): void {
     this.saveSkin({ ...this.cfg.skin, ...patch });
+  }
+
+  /** Sets the dim chip another World keeps up beside the pet; no page, no chip. */
+  ambientStatus(status: AmbientStatus): void {
+    this.server.sendPet({ t: 'ambient', status });
+  }
+
+  /** A burst of tokens another World just consumed, floated off the pet like a damage number. */
+  tokenHit(tokens: number): void {
+    this.server.sendPet({ t: 'hit', tokens });
+  }
+
+  /** A sticky card another World keeps up on the pet until the person clicks it away. */
+  alert(id: number, kind: 'approval' | 'done', text: string): void {
+    this.server.sendPet({ t: 'alert', id, kind, text });
+  }
+
+  /** Removes a sticky alert card. */
+  alertClear(id: number): void {
+    this.server.sendPet({ t: 'alert-clear', id });
   }
 
   private onPageGone(): void {

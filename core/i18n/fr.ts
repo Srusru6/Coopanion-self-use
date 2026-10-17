@@ -40,6 +40,22 @@ const fr: Translation<CoreText> = {
     minutesLater: (n: number) => `dans ${n} min`,
   },
 
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude travaille',
+    waitingShort: 'Claude attend votre approbation',
+    verb: {
+      read: 'lecture', edit: 'modification', bash: 'exécution', search: 'recherche', agent: 'sous-agent', web: 'recherche web', other: 'traitement',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: 'occupé', idle: 'inactif', waiting: 'en attente' },
+    alert: {
+      approval: (name: string) => `${name} a besoin de votre approbation`,
+      done: (name: string) => `${name} a terminé`,
+    },
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Appliqué quand le compagnon passe à « ${preset} » de ${figure}`,

@@ -49,6 +49,23 @@ export default {
     minutesLater: (n: number) => `${n} 分钟后`,
   },
 
+  /** Claude Code 会话:常驻气泡、工具动作与仪表盘 */
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude 工作中',
+    waitingShort: 'Claude 需要确认',
+    verb: {
+      read: '读', edit: '编辑', bash: '运行', search: '搜索', agent: '调用子代理', web: '联网搜索', other: '处理任务',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: '忙碌', idle: '空闲', waiting: '等待确认' },
+    alert: {
+      approval: (name: string) => `${name} 需要你确认`,
+      done: (name: string) => `${name} 任务完成`,
+    },
+  },
+
   /** 设置窗口「开始」页「配色方案」里跟着桌宠形象的配色方案 */
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,

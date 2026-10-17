@@ -40,6 +40,22 @@ const ko: Translation<CoreText> = {
     minutesLater: (n: number) => `${n}분 후`,
   },
 
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude 작업 중',
+    waitingShort: 'Claude 확인 필요',
+    verb: {
+      read: '읽기', edit: '편집', bash: '실행', search: '검색', agent: '하위 에이전트 호출', web: '웹 검색', other: '작업 처리',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: '처리 중', idle: '대기 중', waiting: '확인 대기' },
+    alert: {
+      approval: (name: string) => `${name} 확인이 필요합니다`,
+      done: (name: string) => `${name} 작업 완료`,
+    },
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `펫이 ${figure}의 "${preset}"(으)로 바뀔 때 적용됩니다`,

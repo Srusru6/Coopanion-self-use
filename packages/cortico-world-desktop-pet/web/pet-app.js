@@ -24,6 +24,8 @@ document.body.classList.add(host ? 'desk' : 'tab');
 
 const stage = $('#stage');
 const bubble = $('#bubble'), trail = $('#trail'), menu = $('#menu');
+const ambient = $('#ambient');
+const alerts = $('#alerts');
 const tools = $('#tools');
 // Coo's drawing classes for the menu's avatar; the bubbles and buttons take their colours from Coo's palette
 // another pack's body sets the theme color instead (accentStyle, after skinStyle so it wins)
@@ -301,6 +303,10 @@ function onOrder(m) {
     case 'said': addLine('chat', typeof m.text === 'string' ? m.text : '', false, { images: Number(m.images) || 0, cursor: m.cursor ?? null }); break;
     case 'said-withdrawn': withdrawLine(m.cursor); break;
     case 'status': setStatus(m.status); break;
+    case 'ambient': setAmbient(m.status); break;
+    case 'hit': onHit(m.tokens); break;
+    case 'alert': onAlert(m); break;
+    case 'alert-clear': clearAlert(m.id); break;
     case 'dialog': queue.push({ kind: 'dialog', id: m.id, d: m }); holdRoam(20); break;
     case 'dialog-update': updateDialog(m); break;
     case 'dialog-close': endDialog(m.id); break;
@@ -955,6 +961,122 @@ function setStatus(next) {
   if (prev?.kind !== next?.kind) status.since = T;
   status.wanted = next;
 }
+
+/* ---------- ambient: a bubble beside the pet, set by another World; the short label expands to the full status on click ---------- */
+let ambientState = null;
+function renderAmbient() {
+  if (!ambientState) { ambient.hidden = true; ambient.classList.remove('expanded'); return; }
+  const expanded = ambient.classList.contains('expanded');
+  ambient.classList.toggle('expandable', !!ambientState.detail);
+  ambient.textContent = expanded && ambientState.detail ? ambientState.detail : ambientState.text;
+  ambient.hidden = false;
+}
+function setAmbient(status) {
+  if (!status?.active || !status.text) { ambientState = null; renderAmbient(); return; }
+  ambientState = status;
+  renderAmbient();
+}
+ambient.addEventListener('click', () => {
+  if (!ambientState?.detail) return;
+  ambient.classList.toggle('expanded');
+  renderAmbient();
+});
+
+/* ---------- damage numbers: a burst of tokens another World consumed, split and floated off the pet ---------- */
+function formatHit(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'm';
+  if (n >= 1e4) return Math.round(n / 1e3) + 'k';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+  return String(n);
+}
+/** One consumption split into several parts that sum to it exactly: the bigger the count, the more numbers. */
+function splitHit(tokens) {
+  if (tokens < 8) return [tokens];
+  const n = clamp(Math.round(Math.log10(tokens)) + 1, 2, 6);
+  const parts = new Array(n).fill(1);
+  let left = tokens - n;
+  for (let i = 0; i < n; i++) {
+    if (i === n - 1) { parts[i] += left; break; }
+    const take = Math.floor((left / (n - i)) * (0.4 + Math.random() * 1.2));
+    parts[i] += take;
+    left -= take;
+  }
+  return parts;
+}
+/* The split parts are not shown at once: they wait in a queue and come out one every HIT_DRIP_MS, so a
+   busy session reads as a steady trickle of tokens instead of a single burst that flashes and is gone. */
+const HIT_DRIP_MS = 300;
+const hitQueue = [];
+let hitTimer = 0;
+let hitSwing = 0; // rotates where each number lands so the stream fans side to side
+function onHit(tokens) {
+  for (const part of splitHit(tokens)) hitQueue.push(part);
+  if (!hitTimer) hitTimer = setTimeout(dripHit, 0);
+}
+function dripHit() {
+  const part = hitQueue.shift();
+  if (part === undefined) { hitTimer = 0; return; }
+  spawnHit(part);
+  hitTimer = setTimeout(dripHit, HIT_DRIP_MS);
+}
+function spawnHit(part) {
+  const l = at();
+  if (!l) return;
+  const a = l.bubble;
+  // rise from just above the bubble and the ambient chip, clear of the dialog, the text and the alert cards
+  const bubbleH = bubble.hidden ? 0 : bubble.offsetHeight + 8;
+  const ambientH = ambient.hidden ? 0 : ambient.offsetHeight + 6;
+  const originY = Math.max(10, a.y - bubbleH - ambientH - 12);
+  const originX = clamp(a.x, 24, innerWidth - 24);
+  const spread = Math.min(150, Math.max(80, innerWidth * 0.22));
+  hitSwing = (hitSwing + 1) % 5;
+  const slot = hitSwing / 4; // 0, .25, .5, .75, 1 across the fan
+  const x = clamp(originX + (slot - 0.5) * spread + (Math.random() - 0.5) * 14, 14, innerWidth - 14);
+  const level = clamp((Math.log10(part + 1) - 3) / 2.5, 0, 1);
+  const el = document.createElement('span');
+  el.className = 'hit' + (level > 0.7 ? ' crit' : level > 0.4 ? ' big' : '');
+  el.textContent = formatHit(part);
+  el.style.left = f(x) + 'px';
+  el.style.top = f(originY + (Math.random() - 0.5) * 8) + 'px';
+  el.style.setProperty('--dx', f((slot - 0.5) * 28 + (Math.random() - 0.5) * 12) + 'px');
+  document.body.appendChild(el);
+  const kill = () => el.remove();
+  el.addEventListener('animationend', kill);
+  setTimeout(kill, 1750); // a fallback so a paused animation cannot leave a number stuck
+}
+
+/* ---------- alerts: sticky cards another World raises (needs approval, finished); each stays until clicked ---------- */
+function alertCard(id) {
+  return alerts.querySelector(`.alert[data-id="${id}"]`);
+}
+function onAlert(m) {
+  const id = String(m.id);
+  let card = alertCard(id);
+  if (!card) {
+    card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'alert';
+    card.dataset.id = id;
+    card.innerHTML = '<span class="a-icon"></span><span class="a-text"></span><span class="a-close">×</span>';
+    card.addEventListener('click', () => {
+      card.remove();
+      if (!alerts.querySelector('.alert')) alerts.hidden = true;
+      send({ t: 'alert-dismissed', id: Number(id) });
+    });
+    alerts.appendChild(card);
+  }
+  card.classList.toggle('approval', m.kind === 'approval');
+  card.classList.toggle('done', m.kind === 'done');
+  card.querySelector('.a-icon').textContent = m.kind === 'approval' ? '!' : '✓';
+  card.querySelector('.a-text').textContent = String(m.text || '');
+  alerts.hidden = false;
+}
+function clearAlert(id) {
+  const card = alertCard(String(id));
+  if (card) card.remove();
+  if (!alerts.querySelector('.alert')) alerts.hidden = true;
+}
+
 function drawStatus(next, pop) {
   const icon = next.kind;
   if (!bubble.classList.contains('status') || bubble.dataset.icon !== icon) {
@@ -1374,7 +1496,7 @@ function writePointer(now) {
   diag.types.clear();
 }
 
-const UI_SELECTOR = '.bubble:not(.status):not(.fading):not([hidden]), .menu:not([hidden]), .tools:not([hidden])';
+const UI_SELECTOR = '.bubble:not(.status):not(.fading):not([hidden]), .menu:not([hidden]), .tools:not([hidden]), .alert:not([hidden]), .ambient.expandable:not([hidden])';
 const overUi = (e) => e.target.closest && e.target.closest(UI_SELECTOR);
 document.addEventListener('pointermove', (e) => {
   pointerSeen = true;
@@ -1563,6 +1685,8 @@ function layout(dt = 0) {
   // choice cards keep their bubble where it was; its tail follows Coo along the bottom edge
   if (!bubble.hidden && item?.kind === 'dialog' && item.pinX !== undefined) sayBox = placeTalk(item, a);
   else if (!bubble.hidden) sayBox = place(bubble, a, 18 * prefs.bubbleSize);
+  // the chip floats at the bubble's spot and rises above it while the bubble is up
+  if (!ambient.hidden) { place(ambient, a, 18 + (bubble.hidden ? 0 : bubble.offsetHeight + 8)); ambient.classList.toggle('tailless', !bubble.hidden); }
   placeLines(l, a, sayBox, dt);
 }
 

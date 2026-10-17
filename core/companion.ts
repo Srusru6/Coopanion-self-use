@@ -62,6 +62,8 @@ import { CONSOLE } from 'cortico/worlds/console/definition.ts';
 import { desktopPetDefinition, figurePacks, type DesktopPetWorld } from 'cortico-world-desktop-pet';
 import COO, { CHATGPT, CHATGPT_PROVIDER, signedIn, usageLimited, vendorOf } from 'cortico-provider-coo';
 import { bundledWebUiAssets } from './bundled-panels.ts';
+import { claudeCliDefinition } from './claude-cli.ts';
+import { claudeDir } from './claude-sessions.ts';
 import { followPetLook } from './console-theme.ts';
 import { askForKey, guideDone, markDone, runGuide, type GuideDeps } from './guide.ts';
 import { noticeDefinition, type NoticeWorld } from './notice.ts';
@@ -466,6 +468,18 @@ export async function main(): Promise<void> {
     onCreate: (world) => { notice = world; },
     label: () => coreText(language()).noticeLabel,
   });
+  /** The Claude Code CLI's running sessions: an ambient chip on the pet, events for Coo, and a dashboard. */
+  const CLAUDE_CLI = claudeCliDefinition({
+    claudeDir,
+    read: (path) => (config ? getByPath(config as unknown as Record<string, unknown>, path) : undefined),
+    petConnected: () => (pet as DesktopPetWorld | null)?.petState().connected === true,
+    ambient: (status) => (pet as DesktopPetWorld | null)?.ambientStatus(status),
+    hit: (tokens) => (pet as DesktopPetWorld | null)?.tokenHit(tokens),
+    alert: (id, kind, text) => (pet as DesktopPetWorld | null)?.alert(id, kind, text),
+    alertClear: (id) => (pet as DesktopPetWorld | null)?.alertClear(id),
+    label: () => coreText(language()).claude.label,
+    onCreate: (world) => { if (pet) pet.onAlertDismissed = (id) => world.dismissAlert(id); },
+  });
   /** Coopanion's config group; the console reads this object, retitled in place when the app language changes. */
   const settingsGroup = companionGroup('zh');
   const base = await cormini();
@@ -473,7 +487,7 @@ export async function main(): Promise<void> {
   let coo: CoopanionPersona | null = null;
   const definitionBase: BotDefinition<CorminiConfig> = {
     ...base.definition,
-    declares: [CONSOLE.id, DESKTOP_PET.id, NOTICE.id],
+    declares: [CONSOLE.id, DESKTOP_PET.id, NOTICE.id, CLAUDE_CLI.id],
     // Cormini's tools under the same names; the memory differs by PARTNER.md and the version history
     describe: {
       tools: base.definition.describe?.tools ?? [],
@@ -519,7 +533,7 @@ export async function main(): Promise<void> {
       };
     },
   };
-  const bundled = [CONSOLE, DESKTOP_PET, NOTICE] as WorldDefinition<WorldSection>[];
+  const bundled = [CONSOLE, DESKTOP_PET, NOTICE, CLAUDE_CLI] as WorldDefinition<WorldSection>[];
 
   // extension providers must be registered before endpoints are resolved
   const extensions = await loadExtensions(repoRoot(), {

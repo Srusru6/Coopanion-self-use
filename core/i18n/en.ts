@@ -50,6 +50,23 @@ const en: CoreText = {
     minutesLater: (n: number) => `in ${n} min`,
   },
 
+  /** Claude Code sessions: the ambient chip, tool verbs and the dashboard. */
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude working',
+    waitingShort: 'Claude needs approval',
+    verb: {
+      read: 'reading', edit: 'editing', bash: 'running', search: 'searching', agent: 'using an agent', web: 'searching the web', other: 'working',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: 'busy', idle: 'idle', waiting: 'waiting' },
+    alert: {
+      approval: (name: string) => `${name} needs your approval`,
+      done: (name: string) => `${name} finished`,
+    },
+  },
+
   /** The settings window's colour schemes that follow the pet's figure, under 「配色方案」 on the Start page. */
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,

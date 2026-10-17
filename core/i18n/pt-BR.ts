@@ -40,6 +40,22 @@ const ptBR: Translation<CoreText> = {
     minutesLater: (n: number) => `em ${n} min`,
   },
 
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude trabalhando',
+    waitingShort: 'Claude precisa de aprovação',
+    verb: {
+      read: 'leitura', edit: 'edição', bash: 'execução', search: 'busca', agent: 'subagente', web: 'busca na web', other: 'processamento',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: 'ocupado', idle: 'inativo', waiting: 'aguardando' },
+    alert: {
+      approval: (name: string) => `${name} precisa da sua aprovação`,
+      done: (name: string) => `${name} concluiu`,
+    },
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Aplicado quando o pet muda para “${preset}” de ${figure}`,

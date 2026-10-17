@@ -40,6 +40,22 @@ const zhHant: Translation<CoreText> = {
     minutesLater: (n: number) => `${n} 分鐘後`,
   },
 
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude 工作中',
+    waitingShort: 'Claude 需要確認',
+    verb: {
+      read: '讀', edit: '編輯', bash: '執行', search: '搜尋', agent: '呼叫子代理', web: '連線搜尋', other: '處理任務',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: '忙碌', idle: '空閒', waiting: '等待確認' },
+    alert: {
+      approval: (name: string) => `${name} 需要你確認`,
+      done: (name: string) => `${name} 任務完成`,
+    },
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `桌寵換成${figure}的「${preset}」時自動換上`,

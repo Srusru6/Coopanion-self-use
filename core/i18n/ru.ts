@@ -46,6 +46,22 @@ const ru: Translation<CoreText> = {
     minutesLater: (n: number) => `через ${n} мин`,
   },
 
+  claude: {
+    label: 'Claude',
+    busy: (action: string, speed: string) => `Claude · ${action} · ${speed}`,
+    working: 'Claude работает',
+    waitingShort: 'Claude требует подтверждения',
+    verb: {
+      read: 'чтение', edit: 'правка', bash: 'выполнение', search: 'поиск', agent: 'вызов подагента', web: 'поиск в интернете', other: 'выполнение задачи',
+    },
+    speed: (n: number) => `${n < 10 ? n.toFixed(1) : Math.round(n)} tok/s`,
+    status: { busy: 'занят', idle: 'бездействует', waiting: 'ожидание' },
+    alert: {
+      approval: (name: string) => `${name} требует вашего подтверждения`,
+      done: (name: string) => `${name} завершено`,
+    },
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Включается, когда питомец переходит на «${preset}» персонажа ${figure}`,

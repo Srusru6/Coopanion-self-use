@@ -39,6 +39,7 @@ import { providersFeature } from './advanced/features/providers/index.ts';
 import { traceFeature } from './advanced/features/trace.ts';
 import { worldsFeature } from './advanced/features/worlds/index.ts';
 import { chatPage } from './features/chat/index.ts';
+import { claudePage } from './features/claude/index.ts';
 import { usagePage } from './features/cost/index.ts';
 import { dressPage } from './features/dress/index.ts';
 import { homePage } from './features/home/index.ts';
@@ -71,7 +72,7 @@ const fromFeature = (feature: FrameworkFeature, group: Entry['group'], basic = f
 /** The rail's entries in order. */
 export const ENTRIES: readonly Entry[] = [
   fromPage(homePage), fromPage(petPage), fromPage(dressPage), fromPage(voicePage),
-  fromFeature(promptsFeature, 'primary', true), fromPage(usagePage), fromPage(chatPage),
+  fromFeature(promptsFeature, 'primary', true), fromPage(usagePage), fromPage(claudePage), fromPage(chatPage),
   // 模型供应商 keeps the providers page's own name
   fromFeature(providersFeature, 'integrations'), fromFeature(extensionsFeature, 'integrations'),
   fromFeature(traceFeature, 'diagnostics'), fromFeature(coreFeature, 'diagnostics'),
