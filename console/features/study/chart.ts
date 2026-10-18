@@ -1,7 +1,8 @@
 /**
- * The focus statistics chart: one stacked bar per bucket (an hour, a day, a month or a year),
- * automatic focus at the bottom and manual on top, with the axis labels the Core computed.
- * Plain DOM and SVG, so the settings page and its World panel draw the same chart.
+ * The focus statistics chart: one stacked bar per bucket (an hour, a day, a month or a year).
+ * Without series, automatic focus sits at the bottom and manual on top; with series, each segment
+ * is one goal in its own colour. The axis labels are the Core's, localized. Plain DOM and SVG, so
+ * the settings page and its World panel draw the same chart.
  */
 
 export interface ChartBucket {
@@ -9,6 +10,14 @@ export interface ChartBucket {
   seconds: number;
   auto: number;
   manual: number;
+  goals?: Record<string, number>;
+}
+
+/** One stack segment: a goal (or `''` for sessions without one) and the colour it draws in. */
+export interface ChartSeries {
+  key: string;
+  label: string;
+  color: string;
 }
 
 export interface ChartTexts {
@@ -58,7 +67,12 @@ function labelStep(count: number): number {
   return Math.ceil(count / 6);
 }
 
-export function focusChart(doc: Document, buckets: readonly ChartBucket[], t: ChartTexts): HTMLElement {
+export function focusChart(
+  doc: Document,
+  buckets: readonly ChartBucket[],
+  t: ChartTexts,
+  series?: readonly ChartSeries[],
+): HTMLElement {
   const wrap = doc.createElement('div');
   wrap.className = 'study-chart';
 
@@ -79,7 +93,7 @@ export function focusChart(doc: Document, buckets: readonly ChartBucket[], t: Ch
   const svg = svgEl(doc, 'svg', {
     viewBox: `0 0 ${W} ${H}`,
     role: 'img',
-    'aria-label': t.auto + ' / ' + t.manual,
+    'aria-label': series?.length ? series.map((s) => s.label).join(' / ') : t.auto + ' / ' + t.manual,
   });
 
   // horizontal guides at zero, half and full scale
@@ -98,23 +112,43 @@ export function focusChart(doc: Document, buckets: readonly ChartBucket[], t: Ch
   buckets.forEach((bucket, i) => {
     const x = LEFT + slot * i + (slot - barW) / 2;
     if (bucket.seconds > 0) {
-      const hAuto = (bucket.auto / max) * plotH;
-      const hManual = (bucket.manual / max) * plotH;
       const group = svgEl(doc, 'g', {});
       const title = svgEl(doc, 'title', {});
       title.textContent = `${bucket.label} · ${span(bucket.seconds)}`;
       group.append(title);
-      if (hAuto > 0) {
-        group.append(svgEl(doc, 'rect', {
-          x, y: base - hAuto, width: barW, height: hAuto, rx: 2, class: 'bar-auto',
-        }));
-      }
-      if (hManual > 0) {
-        // a 0.5px gap keeps the two tones apart where the parts are thin
-        group.append(svgEl(doc, 'rect', {
-          x, y: base - hAuto - hManual + (hAuto > 0 ? 0.5 : 0), width: barW,
-          height: Math.max(1, hManual - (hAuto > 0 ? 0.5 : 0)), rx: 2, class: 'bar-manual',
-        }));
+      if (series?.length) {
+        let stacked = 0;
+        for (const s of series) {
+          const seconds = bucket.goals?.[s.key] ?? 0;
+          const height = (seconds / max) * plotH;
+          if (height <= 0) continue;
+          // a 0.5px gap keeps thin segments apart
+          const gap = stacked > 0 ? 0.5 : 0;
+          const rect = svgEl(doc, 'rect', {
+            x,
+            y: base - stacked - height + gap,
+            width: barW,
+            height: Math.max(1, height - gap),
+            rx: 2,
+          });
+          rect.style.fill = s.color;
+          group.append(rect);
+          stacked += height;
+        }
+      } else {
+        const hAuto = (bucket.auto / max) * plotH;
+        const hManual = (bucket.manual / max) * plotH;
+        if (hAuto > 0) {
+          group.append(svgEl(doc, 'rect', {
+            x, y: base - hAuto, width: barW, height: hAuto, rx: 2, class: 'bar-auto',
+          }));
+        }
+        if (hManual > 0) {
+          group.append(svgEl(doc, 'rect', {
+            x, y: base - hAuto - hManual + (hAuto > 0 ? 0.5 : 0), width: barW,
+            height: Math.max(1, hManual - (hAuto > 0 ? 0.5 : 0)), rx: 2, class: 'bar-manual',
+          }));
+        }
       }
       svg.append(group);
     }
@@ -127,11 +161,15 @@ export function focusChart(doc: Document, buckets: readonly ChartBucket[], t: Ch
 
   const legend = doc.createElement('div');
   legend.className = 'study-legend';
-  for (const [cls, label] of [['bar-auto', t.auto], ['bar-manual', t.manual]] as const) {
+  const keys: readonly { color: string; label: string; cls?: string }[] = series?.length
+    ? series.map((s) => ({ color: s.color, label: s.label }))
+    : [{ cls: 'bar-auto', label: t.auto, color: '' }, { cls: 'bar-manual', label: t.manual, color: '' }];
+  for (const key of keys) {
     const item = doc.createElement('span');
     const swatch = doc.createElement('i');
-    swatch.className = cls;
-    item.append(swatch, doc.createTextNode(label));
+    if (key.cls) swatch.className = key.cls;
+    else swatch.style.background = key.color;
+    item.append(swatch, doc.createTextNode(key.label));
     legend.append(item);
   }
 

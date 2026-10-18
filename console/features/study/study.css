@@ -11,3 +11,14 @@
 .study-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 2px; vertical-align: -1px; }
 .study-legend i.bar-auto { background: var(--accent); }
 .study-legend i.bar-manual { background: var(--accent-2); }
+/* 按目标:摘要下方的时长列表与目标管理行 */
+.study-golist-title { margin-top: 14px; font-size: 12.5px; color: var(--ink-soft); }
+.study-golist { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.study-golist-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.study-goal-swatch { flex: none; width: 10px; height: 10px; border-radius: 2px; }
+.study-golist-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.study-golist-value { color: var(--ink-soft); font: var(--text-detail) var(--mono); }
+.study-goals { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.study-goal-row { display: flex; align-items: center; gap: 8px; }
+.study-goal-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.study-goal-input { flex: 1; min-width: 0; }
