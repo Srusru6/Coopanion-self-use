@@ -283,6 +283,29 @@ export function windows(): WindowInfo[] {
   return out;
 }
 
+export interface ForegroundInfo {
+  title: string;
+  pid: number;
+  processName: string | null;
+}
+
+/** The executable name a pid runs, from `/proc/<pid>/comm`; null when it cannot be read. */
+export function processName(pid: number): string | null {
+  if (!pid) return null;
+  try {
+    return readFileSync(join('/proc', String(pid), 'comm'), 'utf8').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** The foreground window's title, pid and process name; null when there is none. */
+export function foreground(): ForegroundInfo | null {
+  const win = windows().find((w) => w.foreground);
+  if (!win) return null;
+  return { title: win.title, pid: win.pid, processName: processName(win.pid) };
+}
+
 /** Restores and raises a window through the window manager (xdotool sends _NET_ACTIVE_WINDOW). */
 export function focus(handle: string): boolean {
   const id = Number.parseInt(handle, 16);

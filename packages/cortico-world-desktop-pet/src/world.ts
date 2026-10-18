@@ -50,7 +50,7 @@ import { ASK_OPTION_MAX, petToolDecls } from './tools.ts';
 import { COO, figurePacks, lookOf, modelName, nameIn, packFor, type FigurePack, type PackScan } from './packs.ts';
 import { Cua } from './cua/cua.ts';
 import { CUA_OFF_TOOL_DECLS } from './cua/tools.ts';
-import type { Answer } from './cua/engine-ipc.ts';
+import type { Answer, ForegroundInfo } from './cua/engine-ipc.ts';
 import { PackImporter } from './pack-import.ts';
 import { dressTable, planSettings, type SettingChange } from './self.ts';
 import { MODEL_TEXT, type ModelLanguage, type ModelText } from './model-text.ts';
@@ -1138,13 +1138,18 @@ export class DesktopPetWorld implements World {
     this.server.sendPet({ t: 'ambient', status });
   }
 
+  /** The foreground window's title, pid and process name, for a World that watches what the person is doing. */
+  foregroundWindow(): Promise<ForegroundInfo | null> {
+    return this.cua.foregroundWindow();
+  }
+
   /** A burst of tokens another World just consumed, floated off the pet like a damage number. */
   tokenHit(tokens: number): void {
     this.server.sendPet({ t: 'hit', tokens });
   }
 
   /** A sticky card another World keeps up on the pet until the person clicks it away. */
-  alert(id: number, kind: 'approval' | 'done', text: string): void {
+  alert(id: number, kind: 'approval' | 'done' | 'study', text: string): void {
     this.server.sendPet({ t: 'alert', id, kind, text });
   }
 

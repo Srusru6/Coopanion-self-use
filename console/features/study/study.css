@@ -1,0 +1,13 @@
+/* 学习监督的统计图:自动专注与手动专注的堆叠柱,只用控制台已有的颜色变量。 */
+.study-chart-host { margin-top: 12px; }
+.study-chart svg { display: block; width: 100%; height: auto; }
+.study-chart .axis { stroke: var(--line-2); stroke-width: 1; }
+.study-chart .grid { stroke: var(--line); stroke-dasharray: 3 4; stroke-width: 1; }
+.study-chart .tick { fill: var(--ink-soft); font: var(--text-detail) var(--mono); }
+.study-chart .bar-auto { fill: var(--accent); }
+.study-chart .bar-manual { fill: var(--accent-2); }
+.study-chart.empty { padding: 22px 0; }
+.study-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: 12.5px; color: var(--ink-soft); }
+.study-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 2px; vertical-align: -1px; }
+.study-legend i.bar-auto { background: var(--accent); }
+.study-legend i.bar-manual { background: var(--accent-2); }

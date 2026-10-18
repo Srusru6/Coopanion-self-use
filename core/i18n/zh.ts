@@ -66,6 +66,13 @@ export default {
     },
   },
 
+  /** 学习监督:专注计时与督促文案 */
+  study: {
+    label: '学习监督',
+    focus: (clock: string) => `专注中 ${clock}`,
+    distracted: (app: string) => `你在用 ${app} 摸鱼哦，回来学习吧`,
+  },
+
   /** 设置窗口「开始」页「配色方案」里跟着桌宠形象的配色方案 */
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,

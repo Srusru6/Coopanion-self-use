@@ -21,6 +21,8 @@ import type { NativeDisplay } from './display.ts';
 
 const cg = koffi.load('/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics');
 const cf = koffi.load('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation');
+const libproc = (() => { try { return koffi.load('libproc.dylib'); } catch { return null; } })();
+const ProcPidPath = libproc?.func('int proc_pidpath(int pid, void *buffer, uint32_t buffersize)') ?? null;
 
 const CGPoint = koffi.struct('CGPoint', { x: 'double', y: 'double' });
 const CGRect = koffi.struct('CGRect', { x: 'double', y: 'double', width: 'double', height: 'double' });
@@ -308,6 +310,29 @@ export function windows(): WindowInfo[] {
     CFRelease(list);
   }
   return out;
+}
+
+export interface ForegroundInfo {
+  title: string;
+  pid: number;
+  processName: string | null;
+}
+
+/** The executable name a pid runs, from `proc_pidpath`; null when it cannot be read. */
+export function processName(pid: number): string | null {
+  if (!pid || !ProcPidPath) return null;
+  const buf = Buffer.alloc(1024);
+  const n = ProcPidPath(pid, buf, buf.length);
+  if (n <= 0) return null;
+  const full = buf.subarray(0, n).toString('utf8');
+  return full.split('/').pop()?.trim() || full || null;
+}
+
+/** The foreground window's title, pid and process name; null when there is none. */
+export function foreground(): ForegroundInfo | null {
+  const win = windows().find((w) => w.foreground);
+  if (!win) return null;
+  return { title: win.title, pid: win.pid, processName: processName(win.pid) };
 }
 
 /** Brings the window's app to the front (System Events asks once for permission to be driven). */

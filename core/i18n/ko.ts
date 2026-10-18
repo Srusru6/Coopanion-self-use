@@ -56,6 +56,12 @@ const ko: Translation<CoreText> = {
     },
   },
 
+  study: {
+    label: '학습 감독',
+    focus: (clock: string) => `집중 중 ${clock}`,
+    distracted: (app: string) => `${app}을(를) 쓰며 딴짓하고 있네요, 공부로 돌아와요`,
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `펫이 ${figure}의 "${preset}"(으)로 바뀔 때 적용됩니다`,

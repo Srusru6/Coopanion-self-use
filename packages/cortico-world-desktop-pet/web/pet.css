@@ -196,6 +196,8 @@ body.desk .floor{display:none}
 .alert.approval .a-icon{ background:var(--anger); color:#fff; }
 .alert.done{ border-color:var(--accent); }
 .alert.done .a-icon{ background:var(--accent); color:#fff; }
+.alert.study{ border-color:var(--tear); }
+.alert.study .a-icon{ background:var(--tear); color:#fff; }
 .alert .a-close{ flex:none; color:var(--muted); font-size:16px; line-height:1; }
 .alert:hover .a-close{ color:var(--text); }
 @keyframes alert-in{

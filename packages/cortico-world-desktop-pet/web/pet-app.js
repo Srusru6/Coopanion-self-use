@@ -1067,7 +1067,8 @@ function onAlert(m) {
   }
   card.classList.toggle('approval', m.kind === 'approval');
   card.classList.toggle('done', m.kind === 'done');
-  card.querySelector('.a-icon').textContent = m.kind === 'approval' ? '!' : '✓';
+  card.classList.toggle('study', m.kind === 'study');
+  card.querySelector('.a-icon').textContent = m.kind === 'approval' ? '!' : m.kind === 'done' ? '✓' : '📚';
   card.querySelector('.a-text').textContent = String(m.text || '');
   alerts.hidden = false;
 }

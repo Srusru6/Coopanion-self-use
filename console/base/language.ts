@@ -67,16 +67,21 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null;
 }
 
-/** The window language's value; a partial translation is completed from its base language. */
-export function pick<T>(table: LanguageTable<T>): T {
-  const base = table[baseLanguage(LANGUAGE)];
-  if (LANGUAGE === 'zh' || LANGUAGE === 'en') return base;
-  const own: unknown = table[LANGUAGE];
+/** A language's value; a partial translation is completed from its base language. */
+export function pickFor<T>(language: Language, table: LanguageTable<T>): T {
+  const base = table[baseLanguage(language)];
+  if (language === 'zh' || language === 'en') return base;
+  const own: unknown = table[language];
   if (own === undefined) return base;
   if (!isPlainObject(own) || !isPlainObject(base)) return own as T;
   const merged: Record<string, unknown> = { ...base };
   for (const [key, value] of Object.entries(own)) if (value !== undefined) merged[key] = value;
   return merged as T;
+}
+
+/** The window language's value. */
+export function pick<T>(table: LanguageTable<T>): T {
+  return pickFor(LANGUAGE, table);
 }
 
 /** The header every HTTP request carries. */

@@ -56,6 +56,12 @@ const zhHant: Translation<CoreText> = {
     },
   },
 
+  study: {
+    label: '學習監督',
+    focus: (clock: string) => `專注中 ${clock}`,
+    distracted: (app: string) => `你在用 ${app} 摸魚哦，回來學習吧`,
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `桌寵換成${figure}的「${preset}」時自動換上`,

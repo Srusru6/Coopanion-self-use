@@ -37,7 +37,7 @@ import { CUA_TOOL_DECLS } from './tools.ts';
 import { fit } from './engine/image.ts';
 import { parseKeys } from './engine/keys.ts';
 import { MODEL_TEXT, type ModelLanguage, type ModelText } from './model-text.ts';
-import type { Answer, Button, ChildToMain, EngineRequest, InputResult, MainToChild, ScreenInfo, ScreenshotResult, Target, TypeResult, WindowEntry, Yield, ZoomResult } from './engine-ipc.ts';
+import type { Answer, Button, ChildToMain, EngineRequest, ForegroundInfo, InputResult, MainToChild, ScreenInfo, ScreenshotResult, Target, TypeResult, WindowEntry, Yield, ZoomResult } from './engine-ipc.ts';
 
 const ENGINE_FILE = fileURLToPath(new URL('./engine-child.ts', import.meta.url));
 /** The computer-use part of the environment prompt, for each model-text language; English falls back to Chinese while its file is missing. */
@@ -213,7 +213,7 @@ export class Cua {
    * gets a cancel and the call still resolves with what the engine reports it did.
    */
   private async call<T>(req: EngineRequest, signal?: AbortSignal): Promise<T> {
-    if (req.op !== 'info' && req.op !== 'confirm') await this.permit(req.op === 'screenshot' || req.op === 'zoom' || req.op === 'windows' ? 'see' : 'act', signal);
+    if (req.op !== 'info' && req.op !== 'confirm' && req.op !== 'foreground') await this.permit(req.op === 'screenshot' || req.op === 'zoom' || req.op === 'windows' ? 'see' : 'act', signal);
     if (signal?.aborted) throw new Interrupted(this.t.interruptedBeforeAct);
     if (!this.engine) { this.engine = this.spawn(); this.engineExit = null; }
     const id = ++this.seq;
@@ -335,6 +335,11 @@ export class Cua {
 
   private get yieldCfg(): Yield {
     return { idleMs: this.cfg.userIdleMs, maxWaitMs: this.cfg.maxYieldWaitMs };
+  }
+
+  /** The foreground window's title, pid and process name; a read of one window, never gated by the permission question. */
+  foregroundWindow(): Promise<ForegroundInfo | null> {
+    return this.call<ForegroundInfo | null>({ op: 'foreground' });
   }
 
   /** `pet_cua_screenshot`: the display asked for, checked against the displays known. */

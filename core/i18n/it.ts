@@ -56,6 +56,12 @@ const it: Translation<CoreText> = {
     },
   },
 
+  study: {
+    label: 'Studio',
+    focus: (clock: string) => `Concentrato ${clock}`,
+    distracted: (app: string) => `Sei su ${app}, torna a studiare`,
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Applicato quando l'animaletto passa a «${preset}» di ${figure}`,

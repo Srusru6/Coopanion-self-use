@@ -67,6 +67,13 @@ const en: CoreText = {
     },
   },
 
+  /** Study supervision: the focus clock and the nudge. */
+  study: {
+    label: 'Study',
+    focus: (clock: string) => `Focusing ${clock}`,
+    distracted: (app: string) => `You're on ${app} — come back to studying`,
+  },
+
   /** The settings window's colour schemes that follow the pet's figure, under 「配色方案」 on the Start page. */
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,

@@ -100,11 +100,24 @@ await esbuild.build({
   },
   logLevel: 'warning',
 });
+// the study World's panel bundle, which the World page in the settings window loads: a separate
+// entry because the window's own bundle is not a panel bundle (core/companion.ts names the file)
+await esbuild.build({
+  entryPoints: [join(WINDOW, 'features', 'study', 'panel.ts')],
+  outfile: join(WINDOW_OUT, 'study-panel.js'),
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  platform: 'browser',
+  minify: true,
+  sourcemap: true,
+  logLevel: 'warning',
+});
 cpSync(join(WINDOW, 'index.html'), join(WINDOW_OUT, 'index.html'));
 const slash = (path: string) => relative(WINDOW_OUT, path).split(sep).join('/');
 const windowEntry = join(WINDOW_OUT, 'tailwind.entry.css');
 writeFileSync(windowEntry, [
-  ...['styles.css', 'features/home/home.css', 'features/chat/chat.css', 'companion.css'].map((f) => `@import "${slash(join(WINDOW, f))}";`),
+  ...['styles.css', 'features/home/home.css', 'features/chat/chat.css', 'features/study/study.css', 'companion.css'].map((f) => `@import "${slash(join(WINDOW, f))}";`),
   `@source "${slash(WINDOW)}";`,
   `@source "${slash(join(pet, 'src', 'webui'))}";`,
   '',

@@ -53,6 +53,9 @@ const GetCursorPos = user32.func('bool __stdcall GetCursorPos(_Out_ POINT *p)');
 const SendInput = user32.func('uint32_t __stdcall SendInput(uint32_t count, INPUT *inputs, int size)');
 const GetLastInputInfo = user32.func('bool __stdcall GetLastInputInfo(_Inout_ LASTINPUTINFO *info)');
 const GetTickCount = kernel32.func('uint32_t __stdcall GetTickCount()');
+const OpenProcess = kernel32.func('HANDLE __stdcall OpenProcess(uint32_t access, bool inherit, uint32_t pid)');
+const CloseHandle = kernel32.func('bool __stdcall CloseHandle(HANDLE handle)');
+const QueryFullProcessImageNameW = kernel32.func('bool __stdcall QueryFullProcessImageNameW(HANDLE proc, uint32_t flags, _Out_ uint16_t *buf, _Inout_ uint32_t *size)');
 const EnumWindows = user32.func('bool __stdcall EnumWindows(EnumWindowsProc *cb, intptr_t lParam)');
 const IsWindowVisible = user32.func('bool __stdcall IsWindowVisible(HWND hwnd)');
 const IsIconic = user32.func('bool __stdcall IsIconic(HWND hwnd)');
@@ -77,6 +80,7 @@ const KEYEVENTF = { EXTENDEDKEY: 0x1, KEYUP: 0x2, UNICODE: 0x4 };
 const GWL_EXSTYLE = -20, WS_EX_TOOLWINDOW = 0x80;
 const DWMWA_EXTENDED_FRAME_BOUNDS = 9, DWMWA_CLOAKED = 14;
 const SW_RESTORE = 9;
+const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 const MB_YESNO = 0x4, MB_ICONQUESTION = 0x20, MB_SETFOREGROUND = 0x10000, MB_TOPMOST = 0x40000;
 const IDYES = 6, MB_TIMEDOUT = 32000;
 
@@ -234,6 +238,35 @@ export function windows(): WindowInfo[] {
     return true;
   }, 0);
   return out;
+}
+
+export interface ForegroundInfo {
+  title: string;
+  pid: number;
+  processName: string | null;
+}
+
+/** The executable name a pid runs (`Code.exe`, `bilibili.exe`), or null when it cannot be read. */
+export function processName(pid: number): string | null {
+  if (!pid) return null;
+  const proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+  if (!proc) return null;
+  try {
+    const buf = new Uint16Array(512);
+    const size = [buf.length];
+    if (!QueryFullProcessImageNameW(proc, 0, buf, size)) return null;
+    const full = String.fromCharCode(...buf.subarray(0, size[0]!));
+    return full.split(/[\\/]/).pop()?.trim() || full || null;
+  } finally {
+    CloseHandle(proc);
+  }
+}
+
+/** The foreground window's title, pid and process name; null when there is none. */
+export function foreground(): ForegroundInfo | null {
+  const win = windows().find((w) => w.foreground);
+  if (!win) return null;
+  return { title: win.title, pid: win.pid, processName: processName(win.pid) };
 }
 
 /** Restores and raises a window; Windows only lets the foreground process hand focus away, so an Alt tap goes first. */

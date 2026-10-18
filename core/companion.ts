@@ -59,14 +59,15 @@ import { providerModules, registerProviderModules } from 'cortico/providers/regi
 import { withWorlds, type WorldDefinition, type WorldSection } from 'cortico/world.ts';
 import { InstanceLockedError } from 'cortico/core/instance-lock.ts';
 import { CONSOLE } from 'cortico/worlds/console/definition.ts';
-import { desktopPetDefinition, figurePacks, type DesktopPetWorld } from 'cortico-world-desktop-pet';
+import { desktopPetDefinition, figurePacks, type AmbientStatus, type DesktopPetWorld } from 'cortico-world-desktop-pet';
 import COO, { CHATGPT, CHATGPT_PROVIDER, signedIn, usageLimited, vendorOf } from 'cortico-provider-coo';
-import { bundledWebUiAssets } from './bundled-panels.ts';
-import { claudeCliDefinition } from './claude-cli.ts';
+import { bundledWebUiAssets, studyWebUiAsset } from './bundled-panels.ts';
+import { claudeCliDefinition, type ClaudeCliWorld } from './claude-cli.ts';
 import { claudeDir } from './claude-sessions.ts';
 import { followPetLook } from './console-theme.ts';
 import { askForKey, guideDone, markDone, runGuide, type GuideDeps } from './guide.ts';
 import { noticeDefinition, type NoticeWorld } from './notice.ts';
+import { studyDefinition, type StudyWorld } from './study.ts';
 import { coreText } from './i18n/index.ts';
 import { petToolDescriber } from './pet-status.ts';
 import { appLanguage, modelLanguage, replyLanguage } from './language.ts';
@@ -410,6 +411,24 @@ export async function main(): Promise<void> {
   let telemetry: Telemetry | null = null;
   let config: CoreConfig | null = null;
   let notice: NoticeWorld | null = null;
+  let claudeWorld: ClaudeCliWorld | null = null;
+  let studyWorld: StudyWorld | null = null;
+  /** Both the Claude and study Worlds dismiss their cards through the pet's single slot. */
+  const dismissAlert = (id: number) => { claudeWorld?.dismissAlert(id); studyWorld?.dismissAlert(id); };
+  /**
+   * The pet has one ambient chip; the Claude and study Worlds share it instead of overwriting each
+   * other. They alternate every second otherwise, so a busy Claude would hide the focus clock.
+   */
+  const ambientSlots: Record<'claude' | 'study', AmbientStatus | null> = { claude: null, study: null };
+  const ambientFrom = (source: keyof typeof ambientSlots) => (status: AmbientStatus) => {
+    ambientSlots[source] = status.active ? status : null;
+    const petNow = pet as DesktopPetWorld | null;
+    if (!petNow) return;
+    const claude = ambientSlots.claude;
+    const study = ambientSlots.study;
+    if (claude && study) petNow.ambientStatus({ active: true, text: `${claude.text} · ${study.text}`, ...(claude.detail ? { detail: claude.detail } : {}) });
+    else petNow.ambientStatus(claude ?? study ?? { active: false, text: '' });
+  };
   /** The introduction is running: the settings it makes are not told as changes. */
   let guiding = false;
   const guideRun = async (deps: GuideDeps) => {
@@ -442,7 +461,8 @@ export async function main(): Promise<void> {
     modelLanguage: () => modelLanguage(config?.language),
     replyLanguage: () => replyLanguage(config?.language),
     language,
-    onCreate: (world) => { pet = world; },
+    // set here too, so the slot is live whichever World happens to be created first
+    onCreate: (world) => { pet = world; world.onAlertDismissed = dismissAlert; },
     onCuaAnswer: (answer) => {
       telemetry?.count('cuaAsked');
       if (answer === 'yes') telemetry?.count('cuaGranted');
@@ -473,12 +493,22 @@ export async function main(): Promise<void> {
     claudeDir,
     read: (path) => (config ? getByPath(config as unknown as Record<string, unknown>, path) : undefined),
     petConnected: () => (pet as DesktopPetWorld | null)?.petState().connected === true,
-    ambient: (status) => (pet as DesktopPetWorld | null)?.ambientStatus(status),
+    ambient: ambientFrom('claude'),
     hit: (tokens) => (pet as DesktopPetWorld | null)?.tokenHit(tokens),
     alert: (id, kind, text) => (pet as DesktopPetWorld | null)?.alert(id, kind, text),
     alertClear: (id) => (pet as DesktopPetWorld | null)?.alertClear(id),
     label: () => coreText(language()).claude.label,
-    onCreate: (world) => { if (pet) pet.onAlertDismissed = (id) => world.dismissAlert(id); },
+    onCreate: (world) => { claudeWorld = world; if (pet) pet.onAlertDismissed = dismissAlert; },
+  });
+  /** The study supervisor: at random intervals it reads the foreground window to tell study from distraction and logs focus time. */
+  const STUDY = studyDefinition({
+    read: (path) => (config ? getByPath(config as unknown as Record<string, unknown>, path) : undefined),
+    foreground: () => (pet as DesktopPetWorld | null)?.foregroundWindow() ?? Promise.resolve(null),
+    ambient: ambientFrom('study'),
+    alert: (id, kind, text) => (pet as DesktopPetWorld | null)?.alert(id, kind, text),
+    alertClear: (id) => (pet as DesktopPetWorld | null)?.alertClear(id),
+    label: () => coreText(language()).study.label,
+    onCreate: (world) => { studyWorld = world; if (pet) pet.onAlertDismissed = dismissAlert; },
   });
   /** Coopanion's config group; the console reads this object, retitled in place when the app language changes. */
   const settingsGroup = companionGroup('zh');
@@ -487,7 +517,7 @@ export async function main(): Promise<void> {
   let coo: CoopanionPersona | null = null;
   const definitionBase: BotDefinition<CorminiConfig> = {
     ...base.definition,
-    declares: [CONSOLE.id, DESKTOP_PET.id, NOTICE.id, CLAUDE_CLI.id],
+    declares: [CONSOLE.id, DESKTOP_PET.id, NOTICE.id, CLAUDE_CLI.id, STUDY.id],
     // Cormini's tools under the same names; the memory differs by PARTNER.md and the version history
     describe: {
       tools: base.definition.describe?.tools ?? [],
@@ -533,7 +563,7 @@ export async function main(): Promise<void> {
       };
     },
   };
-  const bundled = [CONSOLE, DESKTOP_PET, NOTICE, CLAUDE_CLI] as WorldDefinition<WorldSection>[];
+  const bundled = [CONSOLE, DESKTOP_PET, NOTICE, CLAUDE_CLI, STUDY] as WorldDefinition<WorldSection>[];
 
   // extension providers must be registered before endpoints are resolved
   const extensions = await loadExtensions(repoRoot(), {
@@ -544,6 +574,8 @@ export async function main(): Promise<void> {
   extensions.webUiAssets.push(...bundledWebUiAssets([
     { id: DESKTOP_PET.id, packageName: 'cortico-world-desktop-pet' },
   ]));
+  const studyPanel = studyWebUiAsset();
+  if (studyPanel) extensions.webUiAssets.push(studyPanel);
   const definition = withWorlds(definitionBase, [...bundled, ...extensions.worlds]);
 
   const loaded = loadDeployment(definition, deployDir, repoRoot(), join(repoRoot(), 'bots', 'cormini'), providersRoot());

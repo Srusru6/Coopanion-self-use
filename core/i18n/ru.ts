@@ -62,6 +62,12 @@ const ru: Translation<CoreText> = {
     },
   },
 
+  study: {
+    label: 'Учёба',
+    focus: (clock: string) => `Фокус ${clock}`,
+    distracted: (app: string) => `Ты на ${app}, возвращайся к учёбе`,
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Включается, когда питомец переходит на «${preset}» персонажа ${figure}`,

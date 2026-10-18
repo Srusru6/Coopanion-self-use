@@ -56,6 +56,12 @@ const ptBR: Translation<CoreText> = {
     },
   },
 
+  study: {
+    label: 'Estudo',
+    focus: (clock: string) => `Focado ${clock}`,
+    distracted: (app: string) => `Você está no ${app}, volte a estudar`,
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Aplicado quando o pet muda para “${preset}” de ${figure}`,

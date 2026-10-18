@@ -1,7 +1,8 @@
 /**
- * Panel bundles of the World packages bundled with the app. They are assembled as definitions,
- * so the extension loader never reads their `cortico.webUiClient`; these entries join the
- * extension asset table, which is where the WebUI server serves page bundles from.
+ * Panel bundles the app serves to the WebUI. The World packages' bundles are assembled as
+ * definitions, so the extension loader never reads their `cortico.webUiClient`; the study World's
+ * bundle is built from this repository's own sources. These entries join the extension asset
+ * table, which is where the WebUI server serves page bundles from.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -31,4 +32,22 @@ export function bundledWebUiAssets(worlds: ReadonlyArray<{ id: string; packageNa
     out.push({ pageId: pageIdFor('world', id), packageName, version, jsFile, ...(cssFile ? { cssFile } : {}) });
   }
   return out;
+}
+
+/**
+ * The study World's panel bundle, built by `scripts/stage.ts` from `console/features/study/panel.ts`.
+ * It belongs to no npm package, so the entry carries the app's own version; the content hash keeps a
+ * rebuilt bundle from being served out of the browser's year-long cache. Null before a build.
+ */
+export function studyWebUiAsset(): ExtensionWebUiAsset | null {
+  const jsFile = fileURLToPath(new URL('../build/console/study-panel.js', import.meta.url));
+  let bytes: Buffer;
+  try {
+    bytes = readFileSync(jsFile);
+  } catch {
+    return null;
+  }
+  const { version } = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')) as { version: string };
+  const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 10);
+  return { pageId: pageIdFor('world', 'study'), packageName: 'coopanion', version: `${version}-${hash}`, jsFile };
 }

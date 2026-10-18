@@ -31,6 +31,7 @@ export type EngineRequest =
   | { op: 'type'; text: string; chunkDelayMs: number; yield: Yield }
   | { op: 'key'; chords: KeyCode[][]; yield: Yield }
   | { op: 'windows' }
+  | { op: 'foreground' }
   | { op: 'focus'; handle: string; yield: Yield }
   /** `yes` and `no` label the dialog's buttons where the system lets them be named. */
   | { op: 'confirm'; text: string; caption: string; yes: string; no: string; timeoutMs: number };
@@ -96,6 +97,13 @@ export interface WindowEntry {
   rect: { x: number; y: number; width: number; height: number };
   minimized: boolean;
   foreground: boolean;
+}
+
+/** The foreground window, without any other window: what the person is looking at now. */
+export interface ForegroundInfo {
+  title: string;
+  pid: number;
+  processName: string | null;
 }
 
 /**

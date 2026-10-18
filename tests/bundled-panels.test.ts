@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Logger } from 'cortico/core/types.ts';
 import { WebUiAssets } from 'cortico/web/webui-pages.ts';
-import { bundledWebUiAssets } from '../core/bundled-panels.ts';
+import { bundledWebUiAssets, studyWebUiAsset } from '../core/bundled-panels.ts';
 
 const log = { error: (msg: string) => { throw new Error(msg); } } as unknown as Logger;
 
@@ -22,6 +22,16 @@ describe('bundled World panels', () => {
     expect(assets.forPage('world:desktop-pet')).toEqual({
       js: expect.stringMatching(/^\/assets\/extensions\/cortico-world-desktop-pet\/.+\.js$/),
       css: expect.stringMatching(/\.css$/),
+    });
+  });
+
+  it('the WebUI server has a bundle for the study page', () => {
+    const asset = studyWebUiAsset();
+    expect(asset?.pageId).toBe('world:study');
+    expect(asset?.version).toMatch(/^\d+\.\d+\.\d+-[0-9a-f]{10}$/);
+    const assets = new WebUiAssets(join(tmpdir(), 'no-web-dist'), log, asset ? [asset] : []);
+    expect(assets.forPage('world:study')).toEqual({
+      js: expect.stringMatching(/^\/assets\/extensions\/coopanion\/.+\.js$/),
     });
   });
 });

@@ -56,6 +56,12 @@ const fr: Translation<CoreText> = {
     },
   },
 
+  study: {
+    label: 'Étude',
+    focus: (clock: string) => `Concentration ${clock}`,
+    distracted: (app: string) => `Tu es sur ${app}, reviens étudier`,
+  },
+
   scheme: {
     name: (figure: string, preset: string) => `${figure} · ${preset}`,
     note: (figure: string, preset: string) => `Appliqué quand le compagnon passe à « ${preset} » de ${figure}`,

@@ -211,6 +211,7 @@ async function handle(req: EngineRequest, cancelled: Cancelled): Promise<unknown
         return { ...w, display: n, rect: { ...at, width: Math.round(w.rect.width * d.scale), height: Math.round(w.rect.height * d.scale) } };
       });
     }
+    case 'foreground': return os.foreground();
     case 'confirm': return os.askYesNo(req.text, req.caption, { yes: req.yes, no: req.no }, req.timeoutMs);
     case 'focus': {
       const w = await waitIdle(req.yield, cancelled);
