@@ -263,7 +263,7 @@ function applyPrefs(p) {
   // the window process does the hiding; the page only passes the setting on
   if (typeof p.hideWhenFullscreen === 'boolean') host?.hideWhenFullscreen?.(p.hideWhenFullscreen);
   if (Array.isArray(p.hoverButtons)) prefs.hoverButtons = p.hoverButtons.filter((id) => typeof id === 'string' && id in ACTIONS);
-  if (p.bot) { prefs.bot = p.bot; if (!menu.hidden && !menu.querySelector('.m-head.confirm')) renderMenuHead(); }
+  if (p.bot) { prefs.bot = p.bot; if (!menu.hidden && !menu.querySelector('.m-head.confirm')) { renderMenuHead(); renderMenuFocus(); } }
   if (typeof p.language === 'string' && p.language !== language()) void switchLanguage(p.language);
   if ('status' in p) setStatus(p.status);
   refreshButtons();
@@ -280,7 +280,7 @@ async function switchLanguage(code) {
   await useLanguage(code);
   document.title = t('pet.title');
   host?.setLanguage?.(code);
-  if (!menu.hidden && !menu.querySelector('.m-head.confirm')) renderMenuHead();
+  if (!menu.hidden && !menu.querySelector('.m-head.confirm')) { renderMenuHead(); renderMenuFocus(); }
   refreshButtons();
 }
 
@@ -1272,7 +1272,9 @@ function toggleVoice() {
 function openMenu(x, y) {
   menu.innerHTML = '';
   menu.appendChild(Object.assign(document.createElement('div'), { className: 'm-head' }));
+  menu.appendChild(Object.assign(document.createElement('div'), { className: 'm-focus', hidden: true }));
   renderMenuHead();
+  renderMenuFocus();
   const grid = Object.assign(document.createElement('div'), { className: 'm-grid' });
   for (const id of Object.keys(ACTIONS)) {
     const a = ACTIONS[id];
@@ -1339,6 +1341,65 @@ function renderMenuHead(confirmQuit = false) {
   if (has.quit) act(ICONS.power, bot.quitLabel, () => renderMenuHead(true), 'm-act power');
 }
 function closeMenu() { menu.hidden = true; }
+
+/**
+ * The study World's focus section: a pill per goal to start toward while idle, or the running
+ * stretch with pause/continue and stop. The prefs broadcast redraws it when the World changes.
+ */
+function renderMenuFocus() {
+  const box = menu.querySelector('.m-focus');
+  if (!box) return;
+  const focus = (prefs.bot || {}).focus;
+  box.replaceChildren();
+  box.hidden = !focus;
+  if (!focus) return;
+  const title = document.createElement('div');
+  title.className = 'm-focus-title';
+  title.textContent = t(focus.focusing ? 'menu.focus' : 'menu.focusStart');
+  box.appendChild(title);
+  if (focus.focusing) {
+    const state = document.createElement('div');
+    state.className = `m-focus-state${focus.paused ? ' paused' : ''}`;
+    state.textContent = t(focus.paused ? 'menu.focusPaused' : 'menu.focusActive', {
+      goal: focus.goalName || t('menu.focusNoGoal'),
+    });
+    box.appendChild(state);
+    const bar = document.createElement('div');
+    bar.className = 'm-focus-acts';
+    const button = (label, action, cls) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = cls; b.textContent = label;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sfx.tick();
+        // pause and continue keep the menu up, so the next tap is right there
+        if (action === 'focus-pause' || action === 'focus-resume') send({ t: 'control', action });
+        else { closeMenu(); send({ t: 'control', action }); }
+      });
+      bar.appendChild(b);
+    };
+    button(t(focus.paused ? 'menu.focusResume' : 'menu.focusPause'), focus.paused ? 'focus-resume' : 'focus-pause', focus.paused ? 'm-fbtn primary' : 'm-fbtn');
+    button(t('menu.focusStop'), 'focus-stop', 'm-fbtn danger');
+    box.appendChild(bar);
+  } else {
+    const list = document.createElement('div');
+    list.className = 'm-goals';
+    const pill = (label, action) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'm-goal'; b.textContent = label;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sfx.tick();
+        closeMenu();
+        send({ t: 'control', action });
+      });
+      list.appendChild(b);
+    };
+    for (const goal of focus.goals || []) pill(goal.name, `focus-start:${goal.id}`);
+    pill(t('menu.focusNoGoal'), 'focus-start');
+    box.appendChild(list);
+  }
+}
 
 /** Redraws whatever shows an action: the open menu's tiles and the hover buttons. */
 function refreshButtons() {

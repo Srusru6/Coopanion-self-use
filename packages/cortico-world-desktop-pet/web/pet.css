@@ -424,6 +424,22 @@ body.desk .floor{display:none}
 .menu .m-act.run:not(.paused){color:var(--skin-eye)}
 .menu .m-act.power:hover, .menu .m-act.danger{color:var(--anger)}
 .menu .m-act.text{width:auto; padding:0 10px; border-radius:15px; font-size:12.5px; white-space:nowrap}
+/* focus: the study World's goals, or its running stretch, above the action tiles; a fixed width keeps a long goal from widening the menu */
+.m-focus{width:220px; padding:2px 2px 8px; margin-bottom:4px; border-bottom:1px solid var(--line)}
+.m-focus-title{margin:0 0 6px 2px; font-size:11.5px; color:var(--muted); letter-spacing:.02em}
+.m-goals{display:flex; flex-wrap:wrap; gap:6px; max-height:132px; overflow-y:auto}
+.m-goal{
+  padding:4px 10px; border:1.5px solid var(--line); border-radius:14px; background:none; color:var(--text);
+  font-size:12.5px; line-height:1.3; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.m-goal:hover, .m-goal:focus-visible{border-color:var(--skin-ink); background:var(--bg); outline:none}
+.m-focus-state{margin:0 2px 7px; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.m-focus-state.paused{color:var(--muted)}
+.m-focus-acts{display:flex; gap:6px}
+.m-fbtn{flex:1; padding:6px 10px; border:1.5px solid var(--line); border-radius:12px; background:none; color:var(--text); font-size:12.5px}
+.m-fbtn:hover, .m-fbtn:focus-visible{background:var(--bg); border-color:var(--skin-ink); outline:none}
+.m-fbtn.primary{border-color:var(--skin-eye); color:var(--skin-eye)}
+.m-fbtn.danger:hover, .m-fbtn.danger:focus-visible{border-color:var(--anger); color:var(--anger)}
 /* six actions in three columns spread over the menu's width (the header no longer widens it: see .m-name) */
 .m-grid{display:grid; grid-template-columns:repeat(3, 1fr); justify-items:center; gap:8px 10px; padding:4px 2px 2px}
 /* every entry is a round icon button; a switch that is on is lit in the eye color, one that is off keeps its crossed-out icon on a dashed ring */

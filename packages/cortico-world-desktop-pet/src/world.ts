@@ -103,6 +103,46 @@ const HOTKEY_POLL_MS = 30;
  */
 const MIC_RELEASE_MS = 500;
 
+/** A focus goal an embedding app lends the pet's menu. */
+export interface PetFocusGoal {
+  id: string;
+  name: string;
+  color: number;
+}
+
+/** What the embedding app's focus stretch is doing, without the ticking clock. */
+export interface PetFocusState {
+  focusing: boolean;
+  paused: boolean;
+  goalId: string | null;
+  goalName: string | null;
+}
+
+/** Focus controls an embedding app lends the pet's menu (the study World). */
+export interface PetFocusControls {
+  state(): PetFocusState | null;
+  goals(): PetFocusGoal[];
+  start(goalId: string | null): void;
+  pause(): void;
+  resume(): void;
+  stop(): void;
+}
+
+/** A `focus-*` action from the pet page's menu. */
+export type PetFocusControl =
+  | { action: 'start'; goalId: string | null }
+  | { action: 'pause' | 'resume' | 'stop' };
+
+/** `focus-start` / `focus-start:<goal id>` / `focus-pause` / `focus-resume` / `focus-stop`. */
+export function parseFocusControl(action: string): PetFocusControl | null {
+  if (action === 'focus-pause') return { action: 'pause' };
+  if (action === 'focus-resume') return { action: 'resume' };
+  if (action === 'focus-stop') return { action: 'stop' };
+  if (action === 'focus-start') return { action: 'start', goalId: null };
+  if (action.startsWith('focus-start:')) return { action: 'start', goalId: action.slice('focus-start:'.length) || null };
+  return null;
+}
+
 /**
  * Run controls an embedding app lends the pet's menu. Each button shows only when its control is
  * lent: pause/resume needs `isPaused` and `setPaused`, settings `openSettings`, the power button
@@ -123,6 +163,8 @@ export interface PetBotControls {
   quitLabel?: string | (() => string);
   /** Runs the embedding app's introduction again (the console's `pet.guide` panel method). */
   guide?(): void;
+  /** The focus section of the menu: goals to start toward, pause/resume and stop. */
+  focus?: PetFocusControls;
 }
 
 /**
@@ -861,6 +903,7 @@ export class DesktopPetWorld implements World {
     const pause = !!(c?.isPaused && c.setPaused);
     const label = typeof c?.quitLabel === 'function' ? c.quitLabel() : c?.quitLabel;
     const quitLabel = c?.quit ? label || this.ui.menu.quit : '';
+    const focusState = c?.focus?.state() ?? null;
     return {
       name: this.opts.botName ?? '',
       avatar,
@@ -869,6 +912,15 @@ export class DesktopPetWorld implements World {
       paused: pause && c?.isPaused ? c.isPaused() : null,
       quitLabel,
       quitPrompt: quitLabel ? this.ui.menu.quitPrompt(quitLabel) : '',
+      focus: focusState && c?.focus
+        ? {
+          focusing: focusState.focusing,
+          paused: focusState.paused,
+          goalId: focusState.goalId,
+          goalName: focusState.goalName,
+          goals: c.focus.goals().map(({ id, name, color }) => ({ id, name, color })),
+        }
+        : null,
     };
   }
 
@@ -1074,7 +1126,13 @@ export class DesktopPetWorld implements World {
   private onControl(action: string): void {
     const c = this.opts.controls;
     if (!c) return;
-    if (action === 'pause' || action === 'resume') c.setPaused?.(action === 'pause');
+    const focus = parseFocusControl(action);
+    if (focus) {
+      if (focus.action === 'start') c.focus?.start(focus.goalId);
+      else if (focus.action === 'pause') c.focus?.pause();
+      else if (focus.action === 'resume') c.focus?.resume();
+      else c.focus?.stop();
+    } else if (action === 'pause' || action === 'resume') c.setPaused?.(action === 'pause');
     else if (action === 'settings') c.openSettings?.();
     else if (action === 'dress') c.openDress?.();
     else if (action === 'quit') c.quit?.();

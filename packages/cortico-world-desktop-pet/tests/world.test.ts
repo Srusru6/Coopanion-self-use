@@ -7,7 +7,7 @@ import { dryMountWorld } from 'cortico/extensions/dry-mount.ts';
 import { renderTemplate } from 'cortico/core/template.ts';
 import { DESKTOP_PET } from '../src/definition.ts';
 import { DESKTOP_PET_DEFAULTS, SELF_DEFAULT, type DesktopPetConfigSection } from '../src/config.ts';
-import { DesktopPetWorld, type DesktopPetWorldOptions, type PetBotControls } from '../src/world.ts';
+import { DesktopPetWorld, parseFocusControl, type DesktopPetWorldOptions, type PetBotControls, type PetFocusControls } from '../src/world.ts';
 import { chatItem } from '../src/chat.ts';
 import { FakeHost } from './helpers/fake-host.ts';
 import { FakePage } from './helpers/page.ts';
@@ -54,6 +54,24 @@ describe('definition', () => {
     const report = await dryMountWorld(DESKTOP_PET as never, { scratchDir: mkdtempSync(join(tmpdir(), 'pet-dry-')), packageDir: fileURLToPath(new URL('../', import.meta.url)), hasWebUiClient: true });
     expect(report.failures).toEqual([]);
     expect(report.warnings).toEqual([]);
+  });
+});
+
+describe('parseFocusControl', () => {
+  it('reads the focus actions the menu sends, a goal id included', () => {
+    expect(parseFocusControl('focus-start')).toEqual({ action: 'start', goalId: null });
+    expect(parseFocusControl('focus-start:g3')).toEqual({ action: 'start', goalId: 'g3' });
+    expect(parseFocusControl('focus-start:')).toEqual({ action: 'start', goalId: null });
+    expect(parseFocusControl('focus-pause')).toEqual({ action: 'pause' });
+    expect(parseFocusControl('focus-resume')).toEqual({ action: 'resume' });
+    expect(parseFocusControl('focus-stop')).toEqual({ action: 'stop' });
+  });
+
+  it('leaves the other controls alone', () => {
+    expect(parseFocusControl('pause')).toBeNull();
+    expect(parseFocusControl('settings')).toBeNull();
+    expect(parseFocusControl('focus-')).toBeNull();
+    expect(parseFocusControl('')).toBeNull();
   });
 });
 
@@ -496,12 +514,47 @@ describe('with a pet page', () => {
     const win = await FakePage.open(origin(world), 'role=pet&host=window');
     cleanup.push(() => win.close());
     const state = await (await fetch(`${origin(world)}/api/state`)).json() as { bot: Record<string, unknown> };
-    expect(state.bot).toMatchObject({ controls: true, buttons: { pause: false, settings: true, dress: false, quit: false }, paused: null, quitLabel: '', quitPrompt: '' });
+    expect(state.bot).toMatchObject({ controls: true, buttons: { pause: false, settings: true, dress: false, quit: false }, paused: null, quitLabel: '', quitPrompt: '', focus: null });
     // controls that were not lent are ignored
     win.send({ t: 'control', action: 'pause' });
     win.send({ t: 'control', action: 'quit' });
     win.send({ t: 'control', action: 'settings' });
     await expect.poll(() => calls).toEqual(['settings']);
+  });
+
+  it('the menu focus section carries the study World\'s state and goals; its buttons reach it', async () => {
+    const calls: string[] = [];
+    const goals = [{ id: 'g1', name: 'Coding', color: 0 }, { id: 'g2', name: 'Reading', color: 1 }];
+    let state = { focusing: false, paused: false, goalId: null as string | null, goalName: null as string | null };
+    const running = (id: string | null) => {
+      const goal = goals.find((g) => g.id === id) ?? null;
+      state = { focusing: true, paused: false, goalId: goal?.id ?? null, goalName: goal?.name ?? null };
+    };
+    const focus: PetFocusControls = {
+      state: () => state,
+      goals: () => goals,
+      start: (id) => { calls.push(`start:${id}`); running(id); },
+      pause: () => { calls.push('pause'); state = { ...state, paused: true }; },
+      resume: () => { calls.push('resume'); state = { ...state, paused: false }; },
+      stop: () => { calls.push('stop'); state = { focusing: false, paused: false, goalId: null, goalName: null }; },
+    };
+    const { world } = await mounted(undefined, { botName: 'Bot', controls: { focus } });
+    const snapshot = await (await fetch(`${origin(world)}/api/state`)).json() as { bot: Record<string, unknown> };
+    expect(snapshot.bot.focus).toEqual({ focusing: false, paused: false, goalId: null, goalName: null, goals });
+
+    const win = await FakePage.open(origin(world), 'role=pet&host=window');
+    cleanup.push(() => win.close());
+    win.send({ t: 'control', action: 'focus-start:g2' });
+    expect((await win.next((m) => m.t === 'prefs')).bot).toMatchObject({ focus: { focusing: true, paused: false, goalId: 'g2', goalName: 'Reading' } });
+    win.send({ t: 'control', action: 'focus-pause' });
+    expect((await win.next((m) => m.t === 'prefs')).bot).toMatchObject({ focus: { paused: true, goalId: 'g2' } });
+    win.send({ t: 'control', action: 'focus-resume' });
+    expect((await win.next((m) => m.t === 'prefs')).bot).toMatchObject({ focus: { paused: false } });
+    win.send({ t: 'control', action: 'focus-stop' });
+    expect((await win.next((m) => m.t === 'prefs')).bot).toMatchObject({ focus: { focusing: false, goalId: null } });
+    win.send({ t: 'control', action: 'focus-start' });
+    expect((await win.next((m) => m.t === 'prefs')).bot).toMatchObject({ focus: { focusing: true, goalId: null, goalName: null } });
+    expect(calls).toEqual(['start:g2', 'pause', 'resume', 'stop', 'start:null']);
   });
 
   it('rejects requests whose Host is not a loopback name', async () => {
