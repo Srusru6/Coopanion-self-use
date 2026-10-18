@@ -457,6 +457,15 @@ export async function main(): Promise<void> {
         process.send?.({ type: 'companion:hide' });
         void guideRun(guide);
       },
+      // the study World's focus goals and pause/resume/stop, in the menu while it is created
+      focus: {
+        state: () => studyWorld?.petFocusState() ?? null,
+        goals: () => studyWorld?.petGoals() ?? [],
+        start: (goalId) => studyWorld?.startFocus(goalId),
+        pause: () => studyWorld?.pauseFocus(),
+        resume: () => studyWorld?.resumeFocus(),
+        stop: () => studyWorld?.stopFocus(),
+      },
     },
     modelLanguage: () => modelLanguage(config?.language),
     replyLanguage: () => replyLanguage(config?.language),

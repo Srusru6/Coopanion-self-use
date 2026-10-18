@@ -59,6 +59,7 @@ const ja: Translation<CoreText> = {
   study: {
     label: '勉強監督',
     focus: (clock: string) => `集中中 ${clock}`,
+    paused: (clock: string) => `一時停止 ${clock}`,
     distracted: (app: string) => `${app} を開いてサボってるね、勉強に戻ろう`,
   },
 

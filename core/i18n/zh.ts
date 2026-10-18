@@ -70,6 +70,7 @@ export default {
   study: {
     label: '学习监督',
     focus: (clock: string) => `专注中 ${clock}`,
+    paused: (clock: string) => `已暂停 ${clock}`,
     distracted: (app: string) => `你在用 ${app} 摸鱼哦，回来学习吧`,
   },
 

@@ -107,6 +107,23 @@ describe('FocusLedger', () => {
     writeFileSync(file, '{"start":1,"end":2,"seconds":10,"kind":"auto"}\n{"start":3,"end":4,"seconds":');
     expect(new FocusLedger(file).readAll()).toEqual([{ start: 1, end: 2, seconds: 10, kind: 'auto' }]);
   });
+
+  it('reads goal stamps, falling back to the id and leaving old rows untouched', () => {
+    const file = join(dir(), 'focus.jsonl');
+    writeFileSync(file, [
+      '{"start":1,"end":2,"seconds":10,"kind":"auto"}',
+      '{"start":3,"end":4,"seconds":20,"kind":"manual","goal":"g1","goalName":"Coding"}',
+      '{"start":5,"end":6,"seconds":30,"kind":"manual","goal":"g2"}',
+      '{"start":7,"end":8,"seconds":40,"kind":"manual","goal":7}',
+      '',
+    ].join('\n'));
+    expect(new FocusLedger(file).readAll()).toEqual([
+      { start: 1, end: 2, seconds: 10, kind: 'auto' },
+      { start: 3, end: 4, seconds: 20, kind: 'manual', goal: 'g1', goalName: 'Coding' },
+      { start: 5, end: 6, seconds: 30, kind: 'manual', goal: 'g2', goalName: 'g2' },
+      { start: 7, end: 8, seconds: 40, kind: 'manual' },
+    ]);
+  });
 });
 
 describe('FocusLedger.stats', () => {
@@ -196,5 +213,53 @@ describe('FocusLedger.stats', () => {
     expect(stats).toMatchObject({ totalSeconds: 0, sessionCount: 0, longestSeconds: 0, activeBuckets: 0 });
     expect(stats.buckets).toHaveLength(24);
     expect(stats.buckets.every((b) => b.seconds === 0)).toBe(true);
+  });
+
+  it('breaks the span down by goal, without a goals key on legacy buckets', () => {
+    const ledger = new FocusLedger(join(dir(), 'focus.jsonl'));
+    ledger.append(session(at(2026, 10, 17, 9, 15), 600));
+    ledger.append(session(at(2026, 10, 17, 9, 45), 300, 'manual'));
+    const stats = ledger.stats('day', 'UTC', 'en', NOW);
+    expect(stats.hasGoals).toBe(false);
+    expect(stats.goalTotals).toEqual([{ goalId: '', goalName: '', seconds: 900 }]);
+    expect(stats.buckets.find((b) => b.label === '09')).toEqual({ label: '09', seconds: 900, auto: 600, manual: 300 });
+  });
+
+  it('totals and colors by goal, and filters sessions by one', () => {
+    const goal = (start: number, seconds: number, id: string, name: string) =>
+      ({ start, end: start + seconds * 1000, seconds, kind: 'manual' as const, goal: id, goalName: name });
+    const ledger = new FocusLedger(join(dir(), 'focus.jsonl'));
+    ledger.append(goal(at(2026, 10, 17, 9, 15), 600, 'g1', 'Coding'));
+    ledger.append(goal(at(2026, 10, 17, 9, 45), 300, 'g2', 'Reading'));
+    ledger.append(goal(at(2026, 10, 17, 10, 0), 120, 'g1', 'Code'));
+    ledger.append(session(at(2026, 10, 17, 10, 30), 60));
+
+    const all = ledger.stats('day', 'UTC', 'en', NOW);
+    expect(all).toMatchObject({ totalSeconds: 1080, sessionCount: 4, longestSeconds: 600, activeBuckets: 2, hasGoals: true });
+    // the latest snapshot names the goal, sessions without one come last
+    expect(all.goalTotals).toEqual([
+      { goalId: 'g1', goalName: 'Code', seconds: 720 },
+      { goalId: 'g2', goalName: 'Reading', seconds: 300 },
+      { goalId: '', goalName: '', seconds: 60 },
+    ]);
+    expect(all.buckets.find((b) => b.label === '09')).toEqual({
+      label: '09', seconds: 900, auto: 0, manual: 900, goals: { g1: 600, g2: 300 },
+    });
+    expect(all.buckets.find((b) => b.label === '10')).toEqual({
+      label: '10', seconds: 180, auto: 60, manual: 120, goals: { g1: 120, '': 60 },
+    });
+
+    const coding = ledger.stats('day', 'UTC', 'en', NOW, 'g1');
+    expect(coding).toMatchObject({ totalSeconds: 720, sessionCount: 2, activeBuckets: 2 });
+    expect(coding.buckets.find((b) => b.label === '09')?.goals).toEqual({ g1: 600 });
+    // the breakdown still covers the whole span, whatever the filter
+    expect(coding.goalTotals).toHaveLength(3);
+
+    const ungoaled = ledger.stats('day', 'UTC', 'en', NOW, '');
+    expect(ungoaled).toMatchObject({ totalSeconds: 60, sessionCount: 1, activeBuckets: 1 });
+    expect(ungoaled.buckets.find((b) => b.label === '10')?.goals).toEqual({ '': 60 });
+
+    const missing = ledger.stats('day', 'UTC', 'en', NOW, 'g9');
+    expect(missing).toMatchObject({ totalSeconds: 0, sessionCount: 0, activeBuckets: 0 });
   });
 });

@@ -59,6 +59,7 @@ const ko: Translation<CoreText> = {
   study: {
     label: '학습 감독',
     focus: (clock: string) => `집중 중 ${clock}`,
+    paused: (clock: string) => `일시정지 ${clock}`,
     distracted: (app: string) => `${app}을(를) 쓰며 딴짓하고 있네요, 공부로 돌아와요`,
   },
 

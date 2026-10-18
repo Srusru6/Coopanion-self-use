@@ -59,6 +59,7 @@ const fr: Translation<CoreText> = {
   study: {
     label: 'Étude',
     focus: (clock: string) => `Concentration ${clock}`,
+    paused: (clock: string) => `En pause ${clock}`,
     distracted: (app: string) => `Tu es sur ${app}, reviens étudier`,
   },
 

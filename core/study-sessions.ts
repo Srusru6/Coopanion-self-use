@@ -41,6 +41,10 @@ export interface FocusSession {
   end: number;
   seconds: number;
   kind: 'auto' | 'manual';
+  /** The goal's id; absent on automatic and ungoaled stretches, and on records from before goals. */
+  goal?: string;
+  /** The goal's name when the stretch closed, so renaming or deleting it leaves history readable. */
+  goalName?: string;
 }
 
 /** Today's recorded focus, with the sessions that made it up. */
@@ -59,6 +63,15 @@ export interface StatsBucket {
   seconds: number;
   auto: number;
   manual: number;
+  /** Seconds by goal id (`''` for no goal); only present when the span holds goal-stamped sessions. */
+  goals?: Record<string, number>;
+}
+
+/** Focus in the span that belongs to one goal, or to no goal (`goalId: ''`). */
+export interface GoalTotal {
+  goalId: string;
+  goalName: string;
+  seconds: number;
 }
 
 export interface FocusStats {
@@ -70,6 +83,10 @@ export interface FocusStats {
   activeBuckets: number;
   /** Oldest first, every bucket of the span, empty ones included. */
   buckets: StatsBucket[];
+  /** The whole span by goal, ignoring the goal filter; sessions without a goal last. */
+  goalTotals: GoalTotal[];
+  /** Whether the span holds any goal-stamped sessions, which turns the chart goal-coloured. */
+  hasGoals: boolean;
 }
 
 const DAY_MS = 86_400_000;
@@ -276,7 +293,15 @@ export class FocusLedger {
       if (!line.trim()) continue;
       try {
         const r = JSON.parse(line) as FocusSession;
-        if (typeof r.start === 'number' && typeof r.end === 'number' && typeof r.seconds === 'number' && (r.kind === 'auto' || r.kind === 'manual')) out.push(r);
+        if (typeof r.start === 'number' && typeof r.end === 'number' && typeof r.seconds === 'number' && (r.kind === 'auto' || r.kind === 'manual')) {
+          const session: FocusSession = { start: r.start, end: r.end, seconds: r.seconds, kind: r.kind };
+          // old records have no goal at all; do not add `undefined` keys to them
+          if (typeof r.goal === 'string' && r.goal) {
+            session.goal = r.goal;
+            session.goalName = typeof r.goalName === 'string' && r.goalName ? r.goalName : r.goal;
+          }
+          out.push(session);
+        }
       } catch { /* torn line */ }
     }
     return out;
@@ -299,24 +324,55 @@ export class FocusLedger {
    * the last 7 or 30 days, the last 12 months, or every year on record. A session counts toward
    * the bucket its start falls in, by `kind` as well as in all.
    */
-  stats(period: StatsPeriod, timezone: string, language: Language, now = Date.now()): FocusStats {
+  stats(
+    period: StatsPeriod,
+    timezone: string,
+    language: Language,
+    now = Date.now(),
+    goalFilter: string | null = null,
+  ): FocusStats {
     const all = this.readAll();
     let firstStart: number | null = null;
     for (const s of all) firstStart = firstStart === null ? s.start : Math.min(firstStart, s.start);
     const plan = planBuckets(period, timezone, language, now, firstStart);
-    const buckets = new Map(plan.map((p) => [p.key, { label: p.label, seconds: 0, auto: 0, manual: 0 }]));
+    const buckets = new Map(plan.map((p) => [p.key, { label: p.label, seconds: 0, auto: 0, manual: 0 } as StatsBucket]));
+
+    // the per-goal breakdown covers the whole span, whatever the filter shows
+    const totals = new Map<string, GoalTotal>();
+    let hasGoals = false;
+    for (const s of all) {
+      if (!buckets.has(bucketKey(period, timezone, s.start))) continue;
+      const key = s.goal ?? '';
+      if (key) hasGoals = true;
+      const total = totals.get(key) ?? { goalId: key, goalName: key ? (s.goalName ?? key) : '', seconds: 0 };
+      // the latest snapshot is the name the goal had most recently
+      if (key && s.goalName) total.goalName = s.goalName;
+      total.seconds += s.seconds;
+      totals.set(key, total);
+    }
+
     let totalSeconds = 0;
     let sessionCount = 0;
     let longestSeconds = 0;
     for (const s of all) {
       const bucket = buckets.get(bucketKey(period, timezone, s.start));
       if (!bucket) continue;
+      const key = s.goal ?? '';
+      if (goalFilter !== null && key !== goalFilter) continue;
       totalSeconds += s.seconds;
       sessionCount += 1;
       longestSeconds = Math.max(longestSeconds, s.seconds);
       bucket.seconds += s.seconds;
       bucket[s.kind] += s.seconds;
+      if (hasGoals) {
+        bucket.goals ??= {};
+        bucket.goals[key] = (bucket.goals[key] ?? 0) + s.seconds;
+      }
     }
+
+    const goalTotals = [...totals.values()].filter((t) => t.seconds > 0);
+    const ungoaled = goalTotals.filter((t) => t.goalId === '');
+    const named = goalTotals.filter((t) => t.goalId !== '').sort((a, b) => b.seconds - a.seconds);
     const ordered = plan.map((p) => buckets.get(p.key)!);
     return {
       period,
@@ -325,6 +381,8 @@ export class FocusLedger {
       longestSeconds,
       activeBuckets: ordered.filter((b) => b.seconds > 0).length,
       buckets: ordered,
+      goalTotals: [...named, ...ungoaled],
+      hasGoals,
     };
   }
 }

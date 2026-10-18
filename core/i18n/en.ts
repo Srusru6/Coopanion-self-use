@@ -71,6 +71,7 @@ const en: CoreText = {
   study: {
     label: 'Study',
     focus: (clock: string) => `Focusing ${clock}`,
+    paused: (clock: string) => `Paused ${clock}`,
     distracted: (app: string) => `You're on ${app} — come back to studying`,
   },
 

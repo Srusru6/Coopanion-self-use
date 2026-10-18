@@ -59,6 +59,7 @@ const ptBR: Translation<CoreText> = {
   study: {
     label: 'Estudo',
     focus: (clock: string) => `Focado ${clock}`,
+    paused: (clock: string) => `Em pausa ${clock}`,
     distracted: (app: string) => `Você está no ${app}, volte a estudar`,
   },
 
