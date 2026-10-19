@@ -211,9 +211,9 @@ if (located) {
 
 const { CoreHost } = require('./core-host.cjs');
 const { configuredLanguage, systemLanguage, textOf } = require('./i18n/index.cjs');
-const { RELEASES_URL, canUpdate, startUpdater } = require('./updater.cjs');
-/** Steam updates its build, and the portable one is updated by hand: only the others run the updater. */
-const SELF_UPDATE = !STEAM && !PORTABLE && canUpdate();
+const { RELEASES_URL, canCheck, startUpdater } = require('./updater.cjs');
+/** Steam updates its build, and the portable one is updated by hand: only the others watch the official releases. */
+const UPDATE_WATCH = !STEAM && !PORTABLE && canCheck();
 
 const userData = app.getPath('userData');
 const shimDir = join(__dirname, 'shims');
@@ -590,7 +590,7 @@ function askRestoreStranded() {
 }
 
 ipcMain.on('settings:language', (e) => { e.returnValue = language; });
-ipcMain.on('settings:update', (e) => { e.returnValue = { auto: SELF_UPDATE, step: updateLine() }; });
+ipcMain.on('settings:update', (e) => { e.returnValue = { watch: UPDATE_WATCH, step: updateLine() }; });
 
 app.whenReady().then(() => {
   const settingsSession = session.fromPartition(SETTINGS_PARTITION);
@@ -606,7 +606,7 @@ app.whenReady().then(() => {
   buildTray();
   noteAutostart();
   void core.start();
-  if (SELF_UPDATE) updater = startUpdater({
+  if (UPDATE_WATCH) updater = startUpdater({
     logDir: join(userData, 'logs'),
     tell: (step) => {
       updateStep = { type: 'companion:update', ...step };

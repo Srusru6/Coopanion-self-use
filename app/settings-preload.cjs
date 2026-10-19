@@ -3,8 +3,9 @@
  * (`cortico.console.language`) when it loads (console/base/language.ts); here that is the app
  * language, written before each page load.
  *
- * In a build that updates itself (app/updater.cjs), the page also gets `window.coopanionUpdate`: the
- * updater's last step and its later ones, which the version line shows (console/features/release.ts).
+ * In a build that watches the official releases (app/updater.cjs), the page also gets
+ * `window.coopanionUpdate`: the updater's last step and its later ones, which the version line shows
+ * (console/features/release.ts). A step may only announce a release; installing is not offered.
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -12,7 +13,7 @@ try {
   localStorage.setItem('cortico.console.language', ipcRenderer.sendSync('settings:language'));
 } catch { /* a page without storage (the starting page) */ }
 
-if (ipcRenderer.sendSync('settings:update').auto) {
+if (ipcRenderer.sendSync('settings:update').watch) {
   contextBridge.exposeInMainWorld('coopanionUpdate', {
     step: () => ipcRenderer.sendSync('settings:update').step,
     onStep: (listener) => {

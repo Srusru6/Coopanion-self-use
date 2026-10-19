@@ -9,6 +9,10 @@
  * (restart now, or it installs when the app quits), or failed. Only a failed download points to the
  * releases page outright; while downloading, the bubble's second button shows that way on hover. What
  * the updater does is written to `updater.log` in the logs directory.
+ *
+ * This self-use fork carries changes upstream does not have. It checks the releases and tells Coo and
+ * the settings window when a newer one is out, but never downloads or installs it: an official build
+ * would replace the local one. Updates reach this build by rebasing onto the release and rebuilding.
  */
 const { app } = require('electron');
 const { createWriteStream, mkdirSync } = require('node:fs');
@@ -18,41 +22,49 @@ const RELEASES_URL = 'https://github.com/Pal-AI-Lab/Coopanion/releases/latest';
 /** Releases come out at most a few times a day; a run left open for days still hears of them the same day. */
 const CHECK_EVERY_MS = 6 * 3600_000;
 
-/**
- * This self-use fork carries changes upstream does not have: an official release must never replace
- * the installed build on its own. Settings still shows the link to a newer release, but nothing is
- * downloaded or installed; updates reach this build the way they were made, by rebasing and rebuilding.
- */
 const SELF_USE_FORK = true;
 
-/** Whether this build can install an update by itself. */
-function canUpdate() {
-  if (SELF_USE_FORK) return false;
+/** Whether this build can read the releases for its platform. */
+function canCheck() {
   return app.isPackaged && (process.platform === 'win32' || (process.platform === 'linux' && !!process.env.APPIMAGE));
 }
 
+/** Whether this build may download and install a release by itself. */
+function canUpdate() {
+  return !SELF_USE_FORK && canCheck();
+}
+
 /**
- * Starts checking. `tell({ phase: 'downloading' | 'ready' | 'failed', version, reason? })` reports each
- * step. Returns `installOnQuit()`, true when a downloaded update was started for installing as the app
- * quits, and `installNow()`.
+ * Starts checking. `tell({ phase: 'downloading' | 'available' | 'ready' | 'failed', version, reason? })`
+ * reports each step. Returns `installOnQuit()`, true when a downloaded update was started for
+ * installing as the app quits, and `installNow()`.
  */
 function startUpdater({ logDir, tell }) {
-  if (!canUpdate()) return { installOnQuit: () => false, installNow: () => {} };
+  if (!canCheck()) return { installOnQuit: () => false, installNow: () => {} };
+  const install = canUpdate();
   const { autoUpdater } = require('electron-updater');
   mkdirSync(logDir, { recursive: true });
   const log = createWriteStream(join(logDir, 'updater.log'), { flags: 'a' });
   const line = (level) => (...args) => log.write(`${new Date().toISOString()} ${level} ${args.map(String).join(' ')}\n`);
   autoUpdater.logger = { info: line('info'), warn: line('warn'), error: line('error'), debug: line('debug') };
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = install;
   // the app's own quit stops the Core first and then exits, which skips the quit event the updater waits for: installOnQuit does it
   autoUpdater.autoInstallOnAppQuit = false;
   // the installer takes the directory registered for the app, or its default one when none is: an update goes
   // into the directory of the program that is running, so data beside it stays with it
   if (process.platform === 'win32') autoUpdater.installDirectory = dirname(process.execPath);
 
+  let found = null;
   let downloading = null;
   let ready = null;
   autoUpdater.on('update-available', (info) => {
+    if (!install) {
+      // a check comes every six hours; the bubble says it once
+      if (found === info.version) return;
+      found = info.version;
+      tell({ phase: 'available', version: info.version });
+      return;
+    }
     if (downloading === info.version || ready === info.version) return;
     downloading = info.version;
     tell({ phase: 'downloading', version: info.version });
@@ -89,4 +101,4 @@ function startUpdater({ logDir, tell }) {
   };
 }
 
-module.exports = { canUpdate, startUpdater, RELEASES_URL };
+module.exports = { canCheck, canUpdate, startUpdater, RELEASES_URL };
