@@ -18,8 +18,16 @@ const RELEASES_URL = 'https://github.com/Pal-AI-Lab/Coopanion/releases/latest';
 /** Releases come out at most a few times a day; a run left open for days still hears of them the same day. */
 const CHECK_EVERY_MS = 6 * 3600_000;
 
+/**
+ * This self-use fork carries changes upstream does not have: an official release must never replace
+ * the installed build on its own. Settings still shows the link to a newer release, but nothing is
+ * downloaded or installed; updates reach this build the way they were made, by rebasing and rebuilding.
+ */
+const SELF_USE_FORK = true;
+
 /** Whether this build can install an update by itself. */
 function canUpdate() {
+  if (SELF_USE_FORK) return false;
   return app.isPackaged && (process.platform === 'win32' || (process.platform === 'linux' && !!process.env.APPIMAGE));
 }
 
