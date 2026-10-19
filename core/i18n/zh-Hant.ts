@@ -19,6 +19,7 @@ const zhHant: Translation<CoreText> = {
   },
 
   update: {
+    available: (v: string) => `新版本 ${v} 已經發布，可以到 GitHub 下載；我不會自動更新。`,
     downloading: (v: string) => `發現新版本 ${v}，正在背景下載，下載好了我再告訴你。`,
     ready: (v: string) => `新版本 ${v} 下載好了。現在重新啟動更新嗎？不急的話，下次結束應用程式時會自動安裝。`,
     failed: (v: string, why: string) => `新版本 ${v} 沒能下載下來：${why}。可以到 GitHub 手動下載安裝。`,

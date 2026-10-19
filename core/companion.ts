@@ -267,7 +267,7 @@ function hintFailures(core: Core<CoreConfig>, config: CoreConfig, pet: () => Des
   };
 }
 
-interface UpdateStep { phase: 'downloading' | 'ready' | 'failed'; version: string; reason?: string }
+interface UpdateStep { phase: 'downloading' | 'available' | 'ready' | 'failed'; version: string; reason?: string }
 
 /**
  * Says the updater's steps (app/updater.cjs) in the pet's bubble: once each, when the pet page is
@@ -284,12 +284,13 @@ function sayUpdates(config: CoreConfig, pet: () => DesktopPetWorld | null, guidi
     pending = null;
     const s = S();
     const [text, options] = step.phase === 'downloading' ? [s.downloading(step.version), [{ label: s.ok, primary: true }, { label: s.trouble, hover: s.githubByHand }]]
-      : step.phase === 'ready' ? [s.ready(step.version), [{ label: s.install, primary: true }, { label: s.later }]]
-        : [s.failed(step.version, step.reason ?? '?'), [{ label: s.github, primary: true }, { label: s.gotIt }]];
+      : step.phase === 'available' ? [s.available(step.version), [{ label: s.github, primary: true }, { label: s.later }]]
+        : step.phase === 'ready' ? [s.ready(step.version), [{ label: s.install, primary: true }, { label: s.later }]]
+          : [s.failed(step.version, step.reason ?? '?'), [{ label: s.github, primary: true }, { label: s.gotIt }]];
     void p.dialog({ text, actions: [step.phase === 'failed' ? 'sad' : 'happy'], closable: true, input: { kind: 'buttons', options } }).answer.then((a) => {
       if ('unavailable' in a) { pending ??= step; return; }
       if (!('index' in a)) return;
-      const github = (step.phase === 'downloading' && a.index === 1) || (step.phase === 'failed' && a.index === 0);
+      const github = (step.phase === 'downloading' && a.index === 1) || (step.phase === 'available' && a.index === 0) || (step.phase === 'failed' && a.index === 0);
       if (github) process.send?.({ type: 'companion:releases' });
       if (step.phase === 'ready' && a.index === 0) process.send?.({ type: 'companion:update-install' });
     });
@@ -670,7 +671,7 @@ export async function main(): Promise<void> {
   const update = sayUpdates(loaded.config, () => pet, () => guiding);
   process.on('message', (msg: { type?: string } & Partial<UpdateStep>) => {
     if (msg?.type === 'companion:shutdown') void shutdown('应用退出');
-    else if (msg?.type === 'companion:update' && typeof msg.version === 'string' && (msg.phase === 'downloading' || msg.phase === 'ready' || msg.phase === 'failed')) {
+    else if (msg?.type === 'companion:update' && typeof msg.version === 'string' && (msg.phase === 'downloading' || msg.phase === 'available' || msg.phase === 'ready' || msg.phase === 'failed')) {
       update({ phase: msg.phase, version: msg.version, reason: typeof msg.reason === 'string' ? msg.reason : undefined });
     }
   });

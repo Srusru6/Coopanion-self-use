@@ -19,6 +19,7 @@ const ko: Translation<CoreText> = {
   },
 
   update: {
+    available: (v: string) => `${v} 버전이 나왔습니다. GitHub에서 내려받으실 수 있습니다. 자동으로 업데이트하지는 않습니다.`,
     downloading: (v: string) => `${v} 버전이 나와서 백그라운드에서 다운로드하고 있습니다. 준비되면 알려 드리겠습니다.`,
     ready: (v: string) => `${v} 버전을 다운로드했습니다. 지금 다시 시작해서 업데이트하시겠습니까? 아니면 다음에 앱을 종료할 때 설치됩니다.`,
     failed: (v: string, why: string) => `${v} 버전을 다운로드하지 못했습니다: ${why}. GitHub에서 직접 받을 수 있습니다.`,

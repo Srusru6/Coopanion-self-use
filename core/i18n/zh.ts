@@ -24,6 +24,7 @@ export default {
 
   /** 自动更新的几步,在桌宠气泡里说 */
   update: {
+    available: (v: string) => `新版本 ${v} 已经发布，可以到 GitHub 下载；我不会自动更新。`,
     downloading: (v: string) => `发现新版本 ${v}，正在后台下载，下好了我再告诉你。`,
     ready: (v: string) => `新版本 ${v} 下载好了。现在重启更新吗？不急的话，下次退出应用时会自动装上。`,
     failed: (v: string, why: string) => `新版本 ${v} 没能下载下来：${why}。可以去 GitHub 手动下载安装。`,

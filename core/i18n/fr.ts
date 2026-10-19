@@ -19,6 +19,7 @@ const fr: Translation<CoreText> = {
   },
 
   update: {
+    available: (v: string) => `La version ${v} est sortie. Vous pouvez la télécharger sur GitHub ; je ne me mets pas à jour automatiquement.`,
     downloading: (v: string) => `La version ${v} est sortie et se télécharge en arrière-plan ; je vous préviens quand elle est prête.`,
     ready: (v: string) => `La version ${v} est téléchargée. Redémarrer pour mettre à jour maintenant ? Sinon, elle s'installera la prochaine fois que vous quitterez l'application.`,
     failed: (v: string, why: string) => `La version ${v} ne s'est pas téléchargée : ${why}. Vous pouvez la récupérer vous-même sur GitHub.`,

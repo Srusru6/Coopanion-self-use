@@ -19,6 +19,7 @@ const it: Translation<CoreText> = {
   },
 
   update: {
+    available: (v: string) => `È uscita la versione ${v}. Puoi scaricarla da GitHub; non mi aggiorno automaticamente.`,
     downloading: (v: string) => `È uscita la versione ${v} e si sta scaricando in background; ti avviso quando è pronta.`,
     ready: (v: string) => `La versione ${v} è scaricata. Riavviare per aggiornare ora? Altrimenti si installa la prossima volta che chiudi l'app.`,
     failed: (v: string, why: string) => `La versione ${v} non si è scaricata: ${why}. Puoi scaricarla tu da GitHub.`,

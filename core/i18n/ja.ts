@@ -19,6 +19,7 @@ const ja: Translation<CoreText> = {
   },
 
   update: {
+    available: (v: string) => `バージョン ${v} が出ました。GitHub からダウンロードできます。自動では更新しません。`,
     downloading: (v: string) => `バージョン ${v} が出ました。バックグラウンドでダウンロードしていて、準備ができたらお知らせします。`,
     ready: (v: string) => `バージョン ${v} のダウンロードが終わりました。今すぐ再起動して更新しますか？あとにする場合は、次にアプリを終了するときにインストールされます。`,
     failed: (v: string, why: string) => `バージョン ${v} をダウンロードできませんでした：${why}。GitHub から自分でダウンロードできます。`,

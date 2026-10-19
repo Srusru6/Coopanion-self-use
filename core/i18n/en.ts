@@ -26,6 +26,7 @@ const en: CoreText = {
 
   /** The steps of an automatic update, said in the pet's bubble. */
   update: {
+    available: (v: string) => `Version ${v} is out. Download it from GitHub when you like; I won't update by myself.`,
     downloading: (v: string) => `Version ${v} is out and downloading in the background; I'll tell you when it's ready.`,
     ready: (v: string) => `Version ${v} is downloaded. Restart to update now? Otherwise it installs the next time you quit the app.`,
     failed: (v: string, why: string) => `Version ${v} did not download: ${why}. You can get it from GitHub yourself.`,

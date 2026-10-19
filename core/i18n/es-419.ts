@@ -19,6 +19,7 @@ const es419: Translation<CoreText> = {
   },
 
   update: {
+    available: (v: string) => `Ya salió la versión ${v}. Puedes descargarla desde GitHub; no me actualizo automáticamente.`,
     downloading: (v: string) => `Salió la versión ${v} y se está descargando en segundo plano; te aviso cuando esté lista.`,
     ready: (v: string) => `La versión ${v} ya se descargó. ¿Reinicio para actualizar ahora? Si no, se instala la próxima vez que cierres la app.`,
     failed: (v: string, why: string) => `La versión ${v} no se descargó: ${why}. Puedes bajarla tú desde GitHub.`,
