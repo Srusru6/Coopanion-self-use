@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mountRelease } from '../console/features/release.ts';
 import { S } from '../console/features/strings.ts';
 
-/** The preload's bridge in a build that updates itself (app/settings-preload.cjs), driven by the test. */
+/** The preload's bridge in a build that watches the official releases (app/settings-preload.cjs), driven by the test. */
 function updater(first) {
   const listeners = new Set();
   window.coopanionUpdate = {
@@ -15,8 +15,8 @@ function updater(first) {
 
 afterEach(() => { delete window.coopanionUpdate; document.body.replaceChildren(); });
 
-describe('the version line of a build that updates itself', () => {
-  it('shows the updater\'s step in place of a download link, and a link to the releases only once a download failed', () => {
+describe('the version line of a build that watches the official releases', () => {
+  it('shows the updater\'s step in place of a download link, and links to the releases for an announced release or a failed download', () => {
     const run = updater(null);
     const brand = document.createElement('div');
     const life = new AbortController();
@@ -30,6 +30,11 @@ describe('the version line of a build that updates itself', () => {
     run.tell({ phase: 'ready', version: '9.9.9' });
     expect(brand.querySelectorAll('.release-hint')).toHaveLength(1);
     expect(brand.querySelector('.release-hint').textContent).toBe(S.updateReady('9.9.9'));
+
+    run.tell({ phase: 'available', version: '9.9.9' });
+    const announced = brand.querySelector('a.release-hint');
+    expect(announced.textContent).toBe(S.update('9.9.9'));
+    expect(announced.href).toMatch(/\/releases\/latest$/);
 
     run.tell({ phase: 'failed', version: '9.9.9' });
     const link = brand.querySelector('a.release-hint');
